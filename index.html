@@ -1077,7 +1077,12 @@ function renderGameTable(g) {
 
 function adjWL(g, delta) {
   const gs = getGameSetting(g);
-  gs.winners = Math.max(0, gs.winners + delta);
+  // 최댓값: 참가자 수의 절반(소수점 버림) — 면제자+2배자가 전체를 넘으면 안 됨
+  const n = gs.excluded
+    ? S.players.filter(p => !gs.excluded.includes(p.id)).length
+    : S.players.length;
+  const maxWL = Math.floor(n / 2);
+  gs.winners = Math.min(maxWL, Math.max(0, gs.winners + delta));
   gs.losers  = gs.winners;
   document.getElementById('wl-count-'+g).textContent = gs.winners;
   autoSave();
