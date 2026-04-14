@@ -2205,6 +2205,7 @@ function saveRecord() {
         });
         setScoreHistory(hist);
         refreshEverFromHistory();
+        renderEvChart();
 
         // 기록 생성
         const record = {
@@ -2386,6 +2387,7 @@ function sendToEvChart(id) {
       setScoreHistory(hist);
       refreshEverFromHistory();
       renderEverTable();
+      renderEvChart();
       showTab('evchart');
       mAlert(`반영완료!\n\n${count}명 · ${dateKey} 기록이\n에버계산표에 반영되었습니다.`);
     }
@@ -2420,6 +2422,7 @@ function removeFromEvChart(id) {
       setScoreHistory(hist);
       refreshEverFromHistory();
       renderEverTable();
+      renderEvChart();
 
       showTab('evchart');
       mAlert(`반영삭제 완료!\n\n${count}명의 ${dateKey} 이력이\n에버계산표에서 제거되었습니다.`);
