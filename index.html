@@ -420,14 +420,6 @@
 </div>
 
 <script>
-// 즉시 실행 오류 감지
-window.onerror = function(msg, src, line, col, err) {
-  var d = document.createElement('div');
-  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c00;color:#fff;padding:12px;font-size:13px;z-index:99999;word-break:break-all;';
-  d.innerHTML = '<b>JS오류</b><br>' + msg + '<br>line:' + line;
-  document.body ? document.body.appendChild(d) : document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(d)});
-  return false;
-};
 // ─── 커스텀 모달 (alert/confirm 대체) ────────────────────────
 function mAlert(msg, onOk) {
   const ov = document.getElementById('custom-modal-overlay');
