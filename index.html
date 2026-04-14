@@ -1994,7 +1994,7 @@ function startEverEdit(firstName) {
     value="${cur}" min="0" max="300"
     style="width:70px;text-align:center;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;padding:4px 6px;background:var(--bg);border:1px solid var(--accent);border-radius:4px;color:var(--text);"
     onkeydown="onEverKey(event,'${firstName}')"
-    onblur="cancelEverEdit('${firstName}','${cur}')">`;
+    onblur="everBlur('${firstName}')">`;
   const inp = document.getElementById('ever-inp-'+firstName);
   inp.focus();
   inp.select();
@@ -2011,12 +2011,22 @@ function onEverKey(e, firstName) {
 }
 
 function commitEverEdit(firstName, val) {
-  EVER_DB[firstName].ever = val;
-  // 참가자 목록에서 같은 사람이 있으면 에버도 업데이트
+  if (!EVER_DB[firstName]) return;
+  EVER_DB[firstName].ever     = val;
+  EVER_DB[firstName].everRaw  = val;
+  EVER_DB[firstName].fixedEver = val;  // 이력 재계산 시에도 고정
   S.players.forEach(p=>{ if(p.name===firstName) p.ever=val; });
   renderEverTable();
-  // 점수 페이지가 열려 있으면 diff 재계산
   if (document.getElementById('page-scores').classList.contains('active')) renderGameTable(S.activeGame);
+}
+
+function everBlur(firstName) {
+  // blur 시 잠깐 대기 후 — Enter로 저장된 경우 이미 commitEverEdit 호출됨
+  setTimeout(() => {
+    const inp = document.getElementById('ever-inp-'+firstName);
+    if (!inp) return; // 이미 commit돼서 input 사라진 경우
+    cancelEverEdit(firstName, EVER_DB[firstName].ever);
+  }, 150);
 }
 
 function cancelEverEdit(firstName, cur) {
