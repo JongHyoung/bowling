@@ -1297,6 +1297,30 @@ function renderRanking(players, gameRanks, roleMap, feeEach, feeCumul, feePerGam
       </td>
     </tr>`;
   });
+  // ── 합계 행 (총 게임수 / 총 금액)
+  const totalPayGames = feeSorted.reduce((sum,p) => {
+    return sum + (baseFee>0 ? (feeEach[p.id]||[]).reduce((s,f)=>s+Math.round(f/baseFee),0) : 0);
+  }, 0);
+  const totalFee     = feeSorted.reduce((sum,p)=>sum+(feePerGame[p.id]||0), 0);
+  const totalMeal    = feeSorted.reduce((sum,p)=>sum+(mealFeeMap[p.id]||0), 0);
+  const totalGrand   = totalFee + totalMeal;
+  const mealTotalCol = hasMeal
+    ? `<td style="text-align:center;font-weight:700;color:var(--red);border-top:2px solid var(--border);">
+        ${totalMeal.toLocaleString()}원</td>`
+    : '';
+  html += `<tr style="background:var(--surface2);">
+    <td colspan="2" style="padding:8px 10px;font-weight:700;font-size:12px;
+      color:var(--muted);border-top:2px solid var(--border);">합계</td>
+    <td style="border-top:2px solid var(--border);"></td>
+    <td style="font-weight:700;font-size:14px;border-top:2px solid var(--border);padding:8px 6px;">
+      ${totalFee.toLocaleString()}원
+      <div style="font-size:10px;color:var(--muted);font-weight:400;">${totalPayGames}게임</div>
+    </td>
+    ${mealTotalCol}
+    <td style="font-weight:700;font-size:16px;color:var(--accent);border-top:2px solid var(--border);padding:8px 6px;">
+      ${totalGrand.toLocaleString()}원
+    </td>
+  </tr>`;
   html += `</tbody></table></div>`;
 
   // ── 게임별 순위 (합산 아래)
@@ -1866,6 +1890,47 @@ function renderSummary() {
       ${cells}
     </tr>`;
   });
+
+  // ── 합계 행: 선수별 누적 게임수 합산
+  if (rd && rd.feeEach) {
+    const baseFee = S.fee || 3000;
+    // 선수별 누적 게임수
+    const playerTotals = sorted.map(p => {
+      const payGames = baseFee > 0
+        ? (rd.feeEach[p.id]||[]).reduce((s,f)=>s+Math.round(f/baseFee),0)
+        : 0;
+      return payGames;
+    });
+    const totalAllGames = playerTotals.reduce((s,v)=>s+v,0);
+
+    // 게임별 합계 (각 게임에서 총 게임비 게임수 합)
+    const gameTotalCells = Array.from({length:gc},(_,g)=>{
+      const col = playedGames[g] ? 'var(--accent)' : 'var(--muted)';
+      const gTotal = sorted.reduce((s,p)=>{
+        const gs = getGameSetting(g);
+        if (gs.excluded.includes(p.id)) return s;
+        const f = (rd.feeEach[p.id]||[])[g]||0;
+        return s + (baseFee>0 ? Math.round(f/baseFee) : 0);
+      },0);
+      return `<td style="text-align:center;border-top:2px solid var(--border);
+        border-left:1px solid var(--border);padding:6px 3px;
+        font-weight:700;font-size:13px;color:${col};">
+        ${gTotal>0?gTotal+'게임':'—'}
+      </td>`;
+    }).join('');
+
+    html += `<tr style="background:var(--surface2);">
+      <td style="padding:7px 8px;font-weight:700;font-size:12px;color:var(--muted);
+        border-top:2px solid var(--border);position:sticky;left:0;background:var(--surface2);z-index:1;">
+        합계
+      </td>
+      <td style="text-align:center;font-weight:700;font-size:13px;color:var(--red);
+        border-top:2px solid var(--border);border-left:1px solid var(--border);">
+        ${totalAllGames}게임
+      </td>
+      ${gameTotalCells}
+    </tr>`;
+  }
 
   html += `</tbody></table></div>`;
   document.getElementById('summary-output').innerHTML = html;
