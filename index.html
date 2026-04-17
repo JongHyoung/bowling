@@ -2107,23 +2107,44 @@ function renderEverTable() {
 
 function startEverEdit(firstName) {
   const cell = document.getElementById('ever-cell-'+firstName);
-  if (!cell || cell.querySelector('input')) return; // 이미 편집 중
-  const cur = EVER_DB[firstName].ever;
-  cell.innerHTML = `<input type="number" id="ever-inp-${firstName}"
-    value="${cur}" min="0" max="300"
-    style="width:70px;text-align:center;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;padding:4px 6px;background:var(--bg);border:1px solid var(--accent);border-radius:4px;color:var(--text);"
-    onkeydown="onEverKey(event,'${firstName}')"
-    onblur="everBlur('${firstName}')">`;
+  if (!cell || cell.querySelector('input')) return;
+  const cur = EVER_DB[firstName]?.ever ?? '';
+  // 입력창 + 확인버튼 — 모바일 blur 문제 우회
+  cell.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <input type="number" id="ever-inp-${firstName}"
+        value="${cur}" min="0" max="300"
+        style="width:64px;text-align:center;font-size:15px;
+          padding:3px 4px;background:var(--bg);
+          border:1px solid var(--accent);border-radius:4px;color:var(--text);"
+        onkeydown="onEverKey(event,'${firstName}')">
+      <div style="display:flex;gap:4px;">
+        <button onclick="doCommitEver('${firstName}')"
+          style="background:var(--accent);color:#000;border:none;border-radius:4px;
+            padding:2px 8px;font-size:11px;cursor:pointer;">✓</button>
+        <button onclick="cancelEverEdit('${firstName}',${cur})"
+          style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);
+            border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;">✕</button>
+      </div>
+    </div>`;
   const inp = document.getElementById('ever-inp-'+firstName);
-  inp.focus();
-  inp.select();
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+function doCommitEver(firstName) {
+  const inp = document.getElementById('ever-inp-'+firstName);
+  if (!inp) return;
+  const val = parseInt(inp.value);
+  if (isNaN(val) || val < 0 || val > 300) {
+    cancelEverEdit(firstName, EVER_DB[firstName]?.ever ?? 0);
+    return;
+  }
+  commitEverEdit(firstName, val);
 }
 
 function onEverKey(e, firstName) {
   if (e.key==='Enter') {
-    const val = parseInt(e.target.value);
-    if (!val || val<0 || val>300) { cancelEverEdit(firstName, EVER_DB[firstName].ever); return; }
-    commitEverEdit(firstName, val);
+    doCommitEver(firstName);
   } else if (e.key==='Escape') {
     cancelEverEdit(firstName, EVER_DB[firstName].ever);
   }
@@ -2139,14 +2160,8 @@ function commitEverEdit(firstName, val) {
   if (document.getElementById('page-scores').classList.contains('active')) renderGameTable(S.activeGame);
 }
 
-function everBlur(firstName) {
-  // blur 시 잠깐 대기 후 — Enter로 저장된 경우 이미 commitEverEdit 호출됨
-  setTimeout(() => {
-    const inp = document.getElementById('ever-inp-'+firstName);
-    if (!inp) return; // 이미 commit돼서 input 사라진 경우
-    cancelEverEdit(firstName, EVER_DB[firstName].ever);
-  }, 150);
-}
+// everBlur 제거 — 버튼 방식으로 대체
+
 
 function cancelEverEdit(firstName, cur) {
   const cell = document.getElementById('ever-cell-'+firstName);
