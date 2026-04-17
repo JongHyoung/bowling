@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>볼링 순위표</title>
+<title>볼링 정산표</title>
 
 <style>
   :root {
@@ -204,8 +204,8 @@
   <div class="tab" onclick="showTab('setup')">① 기본 설정</div>
   <div class="tab" onclick="showTab('players')">② 참가자</div>
   <div class="tab" onclick="showTab('scores')">③ 점수 입력</div>
-  <div class="tab" onclick="showTab('ranking')">④ 순위표</div>
-  <div class="tab" onclick="showTab('summary')">📊 종합점수표</div>
+  <div class="tab" onclick="showTab('summary')" style="font-size:14px;">📊 점수표</div>
+  <div class="tab" onclick="showTab('ranking')" style="font-size:14px;">💰 정산표</div>
   <div class="tab" onclick="showTab('history')">📁 기록</div>
 </div>
 
@@ -289,10 +289,10 @@
   </div>
 </div>
 
-<!-- 종합점수표 -->
+<!-- 점수표 -->
 <div class="page" id="page-summary">
   <div class="card">
-    <div class="card-title">📊 종합점수표</div>
+    <div class="card-title">📊 점수표</div>
     <div id="summary-output">
       <div class="empty"><div class="empty-icon">📊</div><div class="empty-text">점수를 입력하면 여기에 표시됩니다</div></div>
     </div>
@@ -347,7 +347,7 @@
       <button class="btn btn-ghost btn-sm" onclick="renderHistoryList()">🔄 새로고침</button>
     </div>
     <div id="history-list">
-      <div class="empty"><div class="empty-icon">📂</div><div class="empty-text">저장된 기록이 없습니다<br>종합점수표에서 💾 기록 저장을 눌러주세요</div></div>
+      <div class="empty"><div class="empty-icon">📂</div><div class="empty-text">저장된 기록이 없습니다<br>점수표에서 💾 기록 저장을 눌러주세요</div></div>
     </div>
   </div>
   <!-- 기록 상세 보기 모달 -->
@@ -607,7 +607,7 @@ function showRestoreBanner() {
 
 // ─── TABS ─────────────────────────────────────────────────────
 function showTab(n) {
-  ['evchart','everdb','setup','players','scores','ranking','summary','history'].forEach((x,i)=>{
+  ['evchart','everdb','setup','players','scores','summary','ranking','history'].forEach((x,i)=>{
     document.querySelectorAll('.tab')[i].classList.toggle('active',x===n);
     document.getElementById('page-'+x).classList.toggle('active',x===n);
   });
@@ -1758,7 +1758,7 @@ function renderEvChart() {
   });
 }
 
-// ─── 종합점수표 ───────────────────────────────────────────────
+// ─── 점수표 ───────────────────────────────────────────────
 function renderSummary() {
   saveCurrentGame();
   const gc = S.games;
@@ -2451,7 +2451,7 @@ function renderHistoryList() {
   html += `<div style="font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);margin-bottom:10px;">🗂 저장된 경기 기록 (${records.length}건)</div>`;
 
   if (!records.length) {
-    html += `<div class="empty"><div class="empty-icon">📂</div><div class="empty-text">저장된 기록이 없습니다<br>순위표에서 💾 기록 저장을 눌러주세요</div></div>`;
+    html += `<div class="empty"><div class="empty-icon">📂</div><div class="empty-text">저장된 기록이 없습니다<br>정산표에서 💾 기록 저장을 눌러주세요</div></div>`;
   } else {
     html += records.map(r => {
       const m = r.meta;
@@ -2884,7 +2884,7 @@ function buildMealResultHtml(result) {
     </div>`;
 }
 
-// 순위표용 — 기존 calcMealBet 호환
+// 정산표용 — 기존 calcMealBet 호환
 function calcMealBet(players, gameRanks, gc) {
   const result = calcMealBetFromScores(players);
   return result;
