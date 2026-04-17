@@ -1254,9 +1254,9 @@ function renderRanking(players, gameRanks, roleMap, feeEach, feeCumul, feePerGam
 
   // ── 게임비 합산 (맨 위)
   const feeSorted = [...players].sort((a,b) => {
-    const ta = (feePerGame[b.id]||0)+(mealFeeMap[b.id]||0);
-    const tb = (feePerGame[a.id]||0)+(mealFeeMap[a.id]||0);
-    return ta-tb;
+    const ta = (feePerGame[a.id]||0)+(mealFeeMap[a.id]||0);
+    const tb = (feePerGame[b.id]||0)+(mealFeeMap[b.id]||0);
+    return ta-tb;  // 적게 내는 사람이 위
   });
   const hasMeal = Object.keys(mealFeeMap).length > 0;
   const maxTotal = Math.max(...feeSorted.map(x=>(feePerGame[x.id]||0)+(mealFeeMap[x.id]||0)));
