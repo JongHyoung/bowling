@@ -1057,12 +1057,13 @@ function renderGameTable(g) {
           const cur = S.scores[p.id] ? S.scores[p.id][g] : null;
           const va = cur!==null && cur!==undefined ? `value="${cur}"` : '';
           return `<tr>
-            <td style="color:var(--muted)">${idx+1}</td>
-            <td><strong>${p.fullName}</strong></td>
-            <td style="color:var(--green);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:16px;">${p.ever}</td>
+            <td style="color:var(--muted);font-size:15px;">${idx+1}</td>
+            <td><strong style="font-size:16px;">${p.fullName}</strong></td>
+            <td style="color:var(--green);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:18px;">${p.ever}</td>
             <td><input type="number" id="sc-${p.id}" min="0" max="300" ${va} placeholder="—"
+              style="font-size:18px;"
               oninput="if(+this.value>300)this.value=300;liveCalc(${p.id},${p.ever},this.value)"></td>
-            <td id="diff-${p.id}"><span class="neutral">—</span></td>
+            <td id="diff-${p.id}" style="font-size:16px;"><span class="neutral">—</span></td>
           </tr>`;
         }).join('')}
       </tbody>
