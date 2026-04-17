@@ -484,7 +484,7 @@ const EVER_DB_RAW = [
 let EVER_DB = {};
 EVER_DB_RAW.forEach(p => {
   const firstName = p.full.slice(1);
-  EVER_DB[firstName] = {fullName: p.full, ever: p.fixedEver ?? Math.floor(p.everRaw||p.ever), everRaw: p.fixedEver != null ? p.fixedEver : Math.round((p.everRaw||p.ever)*10)/10, club: p.club||'', rare: p.rare||false, fixedEver: p.fixedEver ?? null};
+  EVER_DB[firstName] = {fullName: p.full, ever: p.fixedEver ?? Math.round(p.everRaw||p.ever), everRaw: p.fixedEver != null ? p.fixedEver : Math.round((p.everRaw||p.ever)*10)/10, club: p.club||'', rare: p.rare||false, fixedEver: p.fixedEver ?? null};
 });
 
 // ─── 대회 이력 초기 데이터 ─────────────────────
@@ -903,7 +903,8 @@ function renderScorePage() {
     return;
   }
   renderGTabs();
-  renderGameTable(S.activeGame);
+  if (S.activeGame === 'meal') renderMealBet();
+  else renderGameTable(S.activeGame);
 }
 
 function renderGTabs() {
@@ -995,6 +996,13 @@ function toggleParticipant(g, pid) {
   const idx = gs.excluded.indexOf(pid);
   if (idx >= 0) gs.excluded.splice(idx, 1);
   else gs.excluded.push(pid);
+  // 참가자 수 변경 후 winners 최댓값 재조정
+  const n = S.players.filter(p => !gs.excluded.includes(p.id)).length;
+  const maxWL = Math.floor(n / 2);
+  if (gs.winners > maxWL) {
+    gs.winners = maxWL;
+    gs.losers  = maxWL;
+  }
   autoSave();
   renderGameTable(g);
 }
@@ -1053,7 +1061,7 @@ function renderGameTable(g) {
             <td><strong>${p.fullName}</strong></td>
             <td style="color:var(--green);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:16px;">${p.ever}</td>
             <td><input type="number" id="sc-${p.id}" min="0" max="300" ${va} placeholder="—"
-              oninput="liveCalc(${p.id},${p.ever},this.value)"></td>
+              oninput="if(+this.value>300)this.value=300;liveCalc(${p.id},${p.ever},this.value)"></td>
             <td id="diff-${p.id}"><span class="neutral">—</span></td>
           </tr>`;
         }).join('')}
@@ -1209,48 +1217,104 @@ function buildRankingData() {
     feeCumul[p.id] = feeEach[p.id].map(v=>{ acc+=v; return acc; });
   });
 
-  window._rd = {players, gameRanks, roleMap, feeEach, feeCumul, feePerGame, gc};
+  window._rd = {players, gameRanks, roleMap, feeEach, feeCumul, feePerGame, gc, meal: null};
   return window._rd;
 }
 
 function calcRanking() {
   const rd = buildRankingData();
   const meal = calcMealBet(rd.players, rd.gameRanks, rd.gc);
+  rd.meal = meal;
+  window._rd = rd;
   renderRanking(rd.players, rd.gameRanks, rd.roleMap, rd.feeEach, rd.feeCumul, rd.feePerGame, [], rd.gc, meal);
   showTab('ranking');
 }
 
 function renderRanking(players, gameRanks, roleMap, feeEach, feeCumul, feePerGame, teamRank, gc, meal=null) {
-  const {name, date, fee, winners, losers} = S;
-  const lastG = gc - 1;
+  const {name, date, fee} = S;
+  const baseFee = S.fee || 3000;
 
-  let html = `<div class="card fade-in">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <div>
-        <div style="font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-weight:700;font-size:20px;color:var(--accent);">${name}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;">
-          ${date} · ${gc}게임 · 🥇1등 ${winners}명 면제 · 💀꼴찌 ${losers}명 2배 · 동점→에버 높은 순
-        </div>
-      </div>
-      <div style="font-size:30px;">🏆</div>
-    </div>`;
+  // 밥값 계산
+  const mealFeeMap = {};
+  let mealResultHtml = '';
+  if (meal && meal.winTeam && meal.loseTeam) {
+    const { winTeam, loseTeam } = meal;
+    const loserTeam  = winTeam.teamTotal >= loseTeam.teamTotal ? loseTeam  : winTeam;
+    const winnerTeam = winTeam.teamTotal >= loseTeam.teamTotal ? winTeam   : loseTeam;
+    const isJeongi = S.mealBet.mode === 'jeongi';
+    winnerTeam.effective.forEach(p => { mealFeeMap[p.id] = isJeongi ? 10000 : 5000; });
+    loserTeam.effective.forEach(p  => { mealFeeMap[p.id] = isJeongi ? 20000 : 10000; });
+    mealResultHtml = buildMealHtml(winnerTeam, loserTeam, players, mealFeeMap);
+  }
 
-  // ── 게임별 순위표
-  for (let g = 0; g < gc; g++) {
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+    ${name} · ${date||'—'} · ${gc}게임 · 동점→에버 높은 순
+  </div>`;
+
+  // ── 게임비 합산 (맨 위)
+  const feeSorted = [...players].sort((a,b) => {
+    const ta = (feePerGame[b.id]||0)+(mealFeeMap[b.id]||0);
+    const tb = (feePerGame[a.id]||0)+(mealFeeMap[a.id]||0);
+    return ta-tb;
+  });
+  const hasMeal = Object.keys(mealFeeMap).length > 0;
+  const maxTotal = Math.max(...feeSorted.map(x=>(feePerGame[x.id]||0)+(mealFeeMap[x.id]||0)));
+
+  html += `<div class="slabel">💰 게임비 합산</div>
+  <div style="overflow-x:auto;"><table class="rtbl">
+    <thead><tr>
+      <th style="width:36px;">#</th><th>이름</th><th>에버</th>
+      <th>게임비</th>${hasMeal?'<th>밥값</th>':''}<th>합계</th>
+    </tr></thead><tbody>`;
+
+  feeSorted.forEach((p, i) => {
+    const total = feePerGame[p.id]||0;
+    const mealAmt = mealFeeMap[p.id]||0;
+    const grandTotal = total + mealAmt;
+    const isMax = grandTotal === maxTotal && grandTotal > 0;
+    // 게임비 내야 하는 누적 게임 수
+    const payGames = baseFee > 0
+      ? (feeEach[p.id]||[]).reduce((s,f)=>s+Math.round(f/baseFee),0)
+      : 0;
+    const mealCol = hasMeal
+      ? `<td style="text-align:center;font-weight:700;font-size:16px;
+          color:${mealAmt>0?'var(--red)':'var(--muted)'};">
+          ${mealAmt>0?(mealAmt===5000?'5천':mealAmt===10000?'1만':'2만')+'원':'—'}</td>`
+      : '';
+    html += `<tr class="${isMax?'loser':'rother'}">
+      <td><span class="rbadge">${i+1}</span></td>
+      <td><strong>${p.fullName}</strong><br>
+        <span style="font-size:10px;color:var(--muted);">${p.club||''}</span></td>
+      <td style="color:var(--green);font-weight:700;font-size:16px;">${p.ever}</td>
+      <td style="font-weight:700;font-size:18px;color:${total===0?'var(--green)':'var(--text)'};">
+        ${total.toLocaleString()}원
+        ${payGames>0?`<div style="font-size:10px;color:var(--muted);font-weight:400;">${payGames}게임</div>`:''}
+      </td>
+      ${mealCol}
+      <td style="font-weight:700;font-size:22px;
+        color:${grandTotal===0?'var(--green)':isMax?'var(--red)':'var(--text)'};">
+        ${grandTotal.toLocaleString()}원
+      </td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  // ── 게임별 순위 (합산 아래)
+  for (let g=0; g<gc; g++) {
     const ranked = gameRanks[g];
     const n = ranked.length;
+    if (!n) continue;
     const gs = getGameSetting(g);
     const W = Math.min(gs.winners, n);
-    const L = Math.min(gs.losers,  n);
-    const winnerSet = new Set(ranked.slice(0, W).map(p => p.id));
-    const loserSet  = new Set(ranked.slice(n - L).map(p => p.id));
-    winnerSet.forEach(id => { if (loserSet.has(id)) winnerSet.delete(id); });
-    const extraPerLoser = Math.ceil((W * fee) / Math.max(L, 1));
+    const L = Math.min(gs.losers, n);
 
-    html += `<div class="slabel">G${g+1} 순위 <span style="font-size:10px;color:var(--muted)">🥇${W}명 · 💀${L}명</span></div>
+    html += `<div class="slabel" style="margin-top:16px;">G${g+1} 순위
+      <span style="font-size:10px;color:var(--muted)"> 🥇${W}명 면제 · 💀${L}명 2배</span>
+    </div>
     <div style="overflow-x:auto;"><table class="rtbl">
       <thead><tr>
-        <th style="width:44px;">순위</th><th>이름</th><th>에버</th><th>점수</th><th>±에버</th><th>결과</th><th>게임비</th>
+        <th style="width:36px;">순위</th><th>이름</th>
+        <th>에버</th><th>점수</th><th>±에버</th><th>게임비</th>
       </tr></thead><tbody>`;
 
     const absent = players.filter(p => p.vals[g].diff === null);
@@ -1259,85 +1323,27 @@ function renderRanking(players, gameRanks, roleMap, feeEach, feeCumul, feePerGam
       const isW = role==='winner', isL = role==='loser';
       const d = p.vals[g].diff;
       const dcls = d>0?'dplus':d<0?'dminus':'dneutral';
-      const resultBadge = isW
-        ? `<span style="background:rgba(232,201,74,.2);color:var(--gold);border:1px solid var(--gold);border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;">🥇 면제</span>`
+      const feeTd = isW
+        ? `<td style="text-align:center;background:rgba(232,201,74,.15);color:var(--gold);font-weight:700;">🥇 0원</td>`
         : isL
-        ? `<span style="background:rgba(224,92,92,.2);color:var(--red);border:1px solid var(--red);border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;">💀 꼴찌</span>`
-        : `<span style="color:var(--muted);font-size:12px;">—</span>`;
-      const feeLabel = isW
-        ? `<div style="text-align:center;"><div style="color:var(--green);font-size:12px;font-weight:700;">0원</div><div style="font-size:10px;color:var(--muted)">누적 ${feeCumul[p.id][g].toLocaleString()}원</div></div>`
-        : isL
-        ? `<div style="text-align:center;"><div style="font-size:12px;color:var(--red);font-weight:700;">${(fee+extraPerLoser).toLocaleString()}원</div><div style="font-size:10px;color:var(--muted)">(본인${fee.toLocaleString()}+${extraPerLoser.toLocaleString()})</div><div style="font-size:11px;color:var(--accent);font-weight:700;margin-top:2px;">누적 ${feeCumul[p.id][g].toLocaleString()}원</div></div>`
-        : `<div style="text-align:center;"><div style="font-size:12px;">${fee.toLocaleString()}원</div><div style="font-size:10px;color:var(--muted)">누적 ${feeCumul[p.id][g].toLocaleString()}원</div></div>`;
+        ? `<td style="text-align:center;background:rgba(224,92,92,.15);color:var(--red);font-weight:700;">💀 ${feeEach[p.id][g].toLocaleString()}원</td>`
+        : `<td style="text-align:center;color:var(--muted);">${(feeEach[p.id][g]||0).toLocaleString()}원</td>`;
       html += `<tr class="${isW?'r1':isL?'loser':'rother'}">
         <td><span class="rbadge">${i+1}</span></td>
-        <td><strong>${p.fullName}</strong></td>
-        <td style="color:var(--green);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:16px;">${p.ever}</td>
-        <td style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:18px;">${p.vals[g].raw}</td>
-        <td><span class="${dcls}">${d>0?'+':''}${d}</span></td>
-        <td>${resultBadge}</td>
-        <td>${feeLabel}</td>
+        <td><strong>${p.fullName}</strong><br>
+          <span style="font-size:10px;color:var(--muted);">${p.club||''}</span></td>
+        <td style="color:var(--green);font-weight:700;font-size:16px;">${p.ever}</td>
+        <td style="font-weight:700;font-size:18px;">${p.vals[g].raw??'—'}</td>
+        <td><span class="${dcls}">${d!==null?(d>0?'+':'')+d:'—'}</span></td>
+        ${feeTd}
       </tr>`;
     });
     if (absent.length) {
-      html += `<tr><td colspan="7" style="font-size:11px;color:var(--muted);padding:6px 10px;">불참: ${absent.map(p=>p.fullName).join(', ')}</td></tr>`;
+      html += `<tr><td colspan="6" style="color:var(--muted);font-size:11px;padding:6px 10px;">
+        불참: ${absent.map(p=>p.fullName).join(', ')}</td></tr>`;
     }
     html += `</tbody></table></div>`;
   }
-
-  // ── 전체 게임비 합산
-  // 밥값내기: mealFeeMap 계산 (게임비 합산 테이블 전에 선언)
-  const mealFeeMap = {};  // pid → 밥값(원)
-  let mealResultHtml = '';
-  if (meal && meal.winTeam && meal.loseTeam) {
-    const { winTeam, loseTeam } = meal;
-    const loserTeam  = winTeam.teamTotal >= loseTeam.teamTotal ? loseTeam  : winTeam;
-    const winnerTeam = winTeam.teamTotal >= loseTeam.teamTotal ? winTeam   : loseTeam;
-    const isJeongi = S.mealBet.mode === 'jeongi';
-    const WIN_FEE  = isJeongi ? 10000 : 5000;   // 정기전: 1만원 / 밥값내기: 5천원
-    const LOSE_FEE = isJeongi ? 20000 : 10000;  // 정기전: 2만원 / 밥값내기: 1만원
-    winnerTeam.effective.forEach(p => { mealFeeMap[p.id] = WIN_FEE;  });
-    loserTeam.effective.forEach(p  => { mealFeeMap[p.id] = LOSE_FEE; });
-    mealResultHtml = buildMealHtml(winnerTeam, loserTeam, players, mealFeeMap);
-  }
-
-  html += `<div class="slabel" style="margin-top:20px;">💰 전체 게임비 합산 (${gc}게임)</div>
-  <div style="overflow-x:auto;"><table class="rtbl">
-    <thead><tr><th style="width:44px;">#</th><th>이름</th><th>에버</th><th>게임비</th>${Object.keys(mealFeeMap).length?'<th>밥값</th>':''}<th>합계</th><th>상세</th></tr></thead>
-    <tbody>`;
-  const sorted = [...players].sort((a,b) => {
-    const ta = feePerGame[b.id]+(mealFeeMap[b.id]||0);
-    const tb = feePerGame[a.id]+(mealFeeMap[a.id]||0);
-    return ta-tb;
-  });
-  sorted.forEach((p, i) => {
-    const total = feePerGame[p.id];
-    const mealAmt = mealFeeMap[p.id] || 0;
-    const grandTotal = total + mealAmt;
-    const detail = Array.from({length:gc},(_,g)=>{
-      const role=roleMap[p.id][g], amt=feeEach[p.id][g];
-      if(role==='absent') return `<span style="color:var(--muted)">G${g+1}불참</span>`;
-      if(role==='winner') return `<span style="color:var(--gold)">G${g+1}🥇0원</span>`;
-      if(role==='loser')  return `<span style="color:var(--red)">G${g+1}💀${amt.toLocaleString()}원</span>`;
-      return `<span style="color:var(--muted)">G${g+1} ${amt.toLocaleString()}원</span>`;
-    }).join(' ');
-    const isMax = grandTotal===Math.max(...sorted.map(x=>feePerGame[x.id]+(mealFeeMap[x.id]||0)));
-    const mealCol = Object.keys(mealFeeMap).length
-      ? `<td style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:16px;color:${mealAmt>0?'var(--red)':'var(--muted)'};">${mealAmt===10000&&S.mealBet.mode==="jeongi"?"1만원":mealAmt===20000?"2만원":mealAmt===5000?"5천원":mealAmt===10000?"1만원":mealAmt>0?mealAmt.toLocaleString()+"원":"—"}</td>`
-      : '';
-    html += `<tr class="${isMax&&grandTotal>0?'loser':'rother'}">
-      <td><span class="rbadge">${i+1}</span></td>
-      <td><strong>${p.fullName}</strong></td>
-      <td style="color:var(--green);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:16px;">${p.ever}</td>
-      <td style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:18px;color:${total===0?'var(--green)':'var(--text)'}">
-        ${total.toLocaleString()}원</td>
-      ${mealCol}
-      <td style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:22px;color:${grandTotal===0?'var(--green)':isMax?'var(--red)':'var(--text)'}">
-        ${grandTotal.toLocaleString()}원</td>
-      <td style="font-size:12px;">${detail}${mealAmt>0?` <span style="color:var(--red);">🍚밥값 ${mealAmt===10000&&S.mealBet.mode==="jeongi"?"1만원":mealAmt===20000?"2만원":mealAmt===5000?"5천원":"1만원"}</span>`:''}</td>
-    </tr>`;
-  });
-  html += `</tbody></table></div></div>`;
 
   html += mealResultHtml;
   document.getElementById('ranking-output').innerHTML = html;
@@ -1547,7 +1553,7 @@ function renderEvChart() {
   allDB.forEach(p => {
     if (p.rare) return;
     const dm = hist[p.fullName]||{};
-    const hasRecent = Object.keys(dm).some(d => parseDate(d)>=sixMoAgo && (dm[d]||[]).some(s=>s!==null));
+    const hasRecent = Object.keys(dm).some(d => (dm[d]||[]).some(s=>s!==null&&s!==0));  // 날짜 무관, 점수 있으면 활성
     if (hasRecent) activeSet.add(p.fullName);
   });
 
@@ -1740,75 +1746,128 @@ function renderSummary() {
     return;
   }
 
-  // 실제 진행된 게임 수 (점수가 하나라도 있는 게임)
+  // 진행된 게임
   const playedGames = Array.from({length:gc},(_,g)=>
     players.some(p=> S.scores[p.id] && S.scores[p.id][g]!==null)
   );
 
-  // 동호회별 그룹
-  const clubs = [...new Set(players.map(p=>p.club||'기타'))];
+  // 에버 내림차순 정렬 (동호회 구분 없음)
+  const sorted = [...players].sort((a,b) => b.ever - a.ever);
 
-  let html = `
-  <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
-    ${S.name} · ${S.date||'—'} · ${gc}게임
-  </div>`;
+  // 순위 계산 (buildRankingData 결과 활용)
+  const rd = window._rd;
 
   // 게임 컬럼 헤더
   const gameCols = Array.from({length:gc},(_,g)=>`
-    <th style="min-width:54px;text-align:center;color:${playedGames[g]?'var(--accent)':'var(--muted)'};">
+    <th style="min-width:52px;text-align:center;padding:6px 4px;
+      color:${playedGames[g]?'var(--accent)':'var(--muted)'};">
       G${g+1}
     </th>`).join('');
 
-  clubs.forEach(club => {
-    const group = players.filter(p=>(p.club||'기타')===club)
-                         .sort((a,b)=>b.ever-a.ever);
-    if (!group.length) return;
-    const clubColor = club==='한울타리'?'var(--blue)':club==='매니아'?'var(--purple)':'var(--muted)';
-    const clubBg    = club==='한울타리'?'rgba(91,192,222,.12)':club==='매니아'?'rgba(192,132,252,.12)':'rgba(100,100,100,.1)';
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+    ${S.name} · ${S.date||'—'} · ${gc}게임 · 에버 내림차순
+  </div>
+  <div style="overflow-x:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead>
+      <tr>
+        <th style="background:var(--surface2);color:var(--muted);font-size:11px;
+          padding:7px 8px;text-align:left;border-bottom:2px solid var(--border);min-width:70px;
+          position:sticky;left:0;z-index:2;">이름</th>
+        <th style="background:var(--surface2);color:var(--green);font-size:11px;
+          padding:7px 6px;text-align:center;border-bottom:2px solid var(--border);min-width:44px;">에버</th>
+        ${gameCols}
+      </tr>
+    </thead>
+    <tbody>`;
 
-    html += `
-    <div style="margin-bottom:18px;">
-      <div style="font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-weight:700;font-size:13px;color:${clubColor};
-                  background:${clubBg};border:1px solid ${clubColor};
-                  border-radius:6px;padding:5px 12px;display:inline-block;margin-bottom:8px;">
-        🎳 ${club} (${group.length}명)
-      </div>
-      <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
-        <thead>
-          <tr>
-            <th style="background:var(--surface2);color:var(--muted);font-size:11px;padding:8px 10px;text-align:left;border-bottom:2px solid var(--border);min-width:70px;">이름</th>
-            <th style="background:var(--surface2);color:var(--green);font-size:11px;padding:8px 6px;text-align:center;border-bottom:2px solid var(--border);min-width:44px;">에버</th>
-            ${gameCols}
-          </tr>
-        </thead>
-        <tbody>
-          ${group.map(p=>{
-            const scores = S.scores[p.id] || [];
-            const cells = Array.from({length:gc},(_,g)=>{
-              const sc = scores[g];
-              const gs = getGameSetting(g);
-              const excluded = gs.excluded.includes(p.id);
-              if (excluded) return `<td style="text-align:center;color:var(--muted);font-size:11px;border-bottom:1px solid var(--border);">—</td>`;
-              if (sc===null||sc===undefined) return `<td style="text-align:center;color:var(--border);border-bottom:1px solid var(--border);">·</td>`;
-              const diff = sc - p.ever;
-              const col  = diff>0?'var(--green)':diff<0?'var(--red)':'var(--muted)';
-              return `<td style="text-align:center;border-bottom:1px solid var(--border);padding:8px 4px;">
-                <div style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:20px;">${sc}</div>
-                <div style="font-size:10px;color:${col};">${diff>0?'+':''}${diff}</div>
-              </td>`;
-            }).join('');
-            return `<tr>
-              <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:500;">${p.fullName}</td>
-              <td style="text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:17px;color:var(--green);border-bottom:1px solid var(--border);">${p.ever}</td>
-              ${cells}
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table></div>
-    </div>`;
+  sorted.forEach(p => {
+    const scores = S.scores[p.id] || [];
+
+    const cells = Array.from({length:gc},(_,g)=>{
+      const sc = scores[g];
+      const gs = getGameSetting(g);
+      const excluded = gs.excluded.includes(p.id);
+
+      if (excluded) return `<td style="text-align:center;color:var(--muted);font-size:11px;
+        border-bottom:1px solid var(--border);border-left:1px solid var(--border);">—</td>`;
+
+      if (sc===null||sc===undefined) return `<td style="text-align:center;color:var(--border);
+        border-bottom:1px solid var(--border);border-left:1px solid var(--border);">·</td>`;
+
+      const diff = sc - p.ever;
+      const diffCol = diff>0?'var(--green)':diff<0?'var(--red)':'var(--muted)';
+
+      // 순위/역할/게임비 확인 (rd 있을 때)
+      let role = 'normal';
+      let rankNum = '';
+      let feeAmt = 0;
+      if (rd && rd.gameRanks && rd.gameRanks[g]) {
+        const found = rd.gameRanks[g].findIndex(x=>x.id===p.id);
+        if (found >= 0) rankNum = found+1;
+        if (rd.roleMap && rd.roleMap[p.id]) role = rd.roleMap[p.id][g] || 'normal';
+        if (rd.feeEach && rd.feeEach[p.id]) feeAmt = rd.feeEach[p.id][g] || 0;
+      }
+      const baseFee = S.fee || 3000;
+      const feeMultiple = (baseFee > 0 && feeAmt > 0) ? Math.round(feeAmt / baseFee) : (role==='winner' ? 0 : 1);
+
+      // 배경색: 면제=노란색, 2배=빨간색
+      const bgColor = role==='winner'
+        ? 'rgba(232,201,74,.2)'
+        : role==='loser'
+        ? 'rgba(224,92,92,.2)'
+        : '';
+      const borderColor = role==='winner'
+        ? 'rgba(232,201,74,.5)'
+        : role==='loser'
+        ? 'rgba(224,92,92,.5)'
+        : 'var(--border)';
+
+      const rankBadge = rankNum
+        ? `<div style="font-size:9px;color:${role==='winner'?'var(--gold)':role==='loser'?'var(--red)':'var(--muted)'};">
+            ${role==='winner'?'🥇':role==='loser'?'💀':''}${rankNum}위
+          </div>`
+        : '';
+
+      return `<td style="text-align:center;border-bottom:1px solid var(--border);
+        border-left:1px solid ${borderColor};padding:5px 3px;
+        background:${bgColor};">
+        ${rankBadge}
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+          font-weight:700;font-size:19px;">${sc}</div>
+        <div style="font-size:10px;color:${diffCol};">
+          ${diff>0?'+':''}${diff}
+          ${role==='loser'?`<span style="color:var(--red);font-size:9px;">${feeMultiple}게임</span>`:
+            role==='winner'?`<span style="color:var(--gold);font-size:9px;">0게임</span>`:''}
+        </div>
+      </td>`;
+    }).join('');
+
+    html += `<tr>
+      <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:500;
+        position:sticky;left:0;background:var(--surface);z-index:1;">
+        ${p.fullName}
+        <div style="font-size:10px;color:var(--muted);">${p.club||''}</div>
+      </td>
+      <td style="text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+        font-weight:700;font-size:17px;color:var(--green);
+        border-bottom:1px solid var(--border);border-left:1px solid var(--border);">
+        ${p.ever}
+        ${(()=>{
+          if(!rd||!rd.feeEach||!rd.feeEach[p.id]) return '';
+          const baseFee = S.fee||3000;
+          if(!baseFee) return '';
+          // 게임비 배수 합산 (면제=0, 일반=1, 2배=2)
+          const totalGames = rd.feeEach[p.id].reduce((sum,f)=>sum+Math.round(f/baseFee),0);
+          if(!totalGames) return '';
+          return '<div style="font-size:11px;color:var(--red);font-weight:600;margin-top:2px;">' + totalGames + '게임</div>';
+        })()}
+      </td>
+      ${cells}
+    </tr>`;
   });
 
+  html += `</tbody></table></div>`;
   document.getElementById('summary-output').innerHTML = html;
 }
 
@@ -2155,7 +2214,7 @@ function refreshEverFromHistory() {
     const avg = calcEverFromHistory(dateMap);
     if (avg !== null) {
       entry.everRaw = Math.round(avg * 10) / 10;  // 소수점1자리
-      entry.ever    = Math.floor(avg);              // 정수(절삭)
+      entry.ever    = Math.round(avg);              // 소수점1자리 반올림 정수
     }
   });
 }
