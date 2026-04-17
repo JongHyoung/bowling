@@ -64,7 +64,7 @@
   .p-item{display:grid;grid-template-columns:22px 1fr 50px 50px auto auto;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;margin-bottom:6px;border:1px solid var(--border);transition:border-color .2s;}
   .p-item.editing{border-color:var(--accent);}
   .p-num{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:14px;color:var(--muted);text-align:center;}
-  .p-name{font-size:13px;font-weight:500;}
+  .p-name{font-size:16px;font-weight:600;}
   .tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;text-align:center;}
   .tag-i{background:#1a3a5c;color:var(--blue);}
   .tag-t{background:#2a1a3a;color:var(--purple);}
@@ -1283,8 +1283,7 @@ function renderRanking(players, gameRanks, roleMap, feeEach, feeCumul, feePerGam
       : '';
     html += `<tr class="${isMax?'loser':'rother'}">
       <td><span class="rbadge">${i+1}</span></td>
-      <td><strong>${p.fullName}</strong><br>
-        <span style="font-size:10px;color:var(--muted);">${p.club||''}</span></td>
+      <td><strong style="font-size:18px;">${p.fullName}</strong></td>
       <td style="color:var(--green);font-weight:700;font-size:16px;">${p.ever}</td>
       <td style="font-weight:700;font-size:18px;color:${total===0?'var(--green)':'var(--text)'};">
         ${total.toLocaleString()}원
@@ -1354,8 +1353,7 @@ function renderRanking(players, gameRanks, roleMap, feeEach, feeCumul, feePerGam
         : `<td style="text-align:center;color:var(--muted);">${(feeEach[p.id][g]||0).toLocaleString()}원</td>`;
       html += `<tr class="${isW?'r1':isL?'loser':'rother'}">
         <td><span class="rbadge">${i+1}</span></td>
-        <td><strong>${p.fullName}</strong><br>
-          <span style="font-size:10px;color:var(--muted);">${p.club||''}</span></td>
+        <td><strong style="font-size:18px;">${p.fullName}</strong></td>
         <td style="color:var(--green);font-weight:700;font-size:16px;">${p.ever}</td>
         <td style="font-weight:700;font-size:18px;">${p.vals[g].raw??'—'}</td>
         <td><span class="${dcls}">${d!==null?(d>0?'+':'')+d:'—'}</span></td>
@@ -1868,10 +1866,9 @@ function renderSummary() {
     }).join('');
 
     html += `<tr>
-      <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:500;
+      <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600;font-size:17px;
         position:sticky;left:0;background:var(--surface);z-index:1;">
         ${p.fullName}
-        <div style="font-size:10px;color:var(--muted);">${p.club||''}</div>
       </td>
       <td style="text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
         font-weight:700;font-size:17px;color:var(--green);
@@ -2088,7 +2085,7 @@ function renderEverTable() {
           ${group.map((p,i)=>`
           <tr id="ever-row-${p.firstName}">
             <td style="color:var(--muted);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:14px;">${i+1}</td>
-            <td class="name-col" id="ever-name-${p.firstName}">${p.fullName}</td>
+            <td class="name-col" id="ever-name-${p.firstName}" style="font-size:16px;font-weight:600;">${p.fullName}</td>
             <td style="font-size:11px;color:${clubColor};">${p.club||'—'}</td>
             <td id="ever-cell-${p.firstName}"
                 style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:20px;color:var(--green);cursor:pointer;"
@@ -2419,7 +2416,7 @@ function renderHistoryList() {
           const last5 = dates.slice(-5);
           const avg = calcEverFromHistory(dm);
           return `<tr>
-            <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:500;">${e.fullName}</td>
+            <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:600;font-size:15px;">${e.fullName}</td>
             <td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:center;font-size:11px;color:var(--muted);">${e.club}</td>
             <td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:center;color:var(--muted);">${dates.length}회<br><span style="font-size:10px">(최근5: ${last5.map(d=>d.slice(5)).join(', ')})</span></td>
             <td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:18px;color:var(--accent);">${avg?.toFixed(2)||'—'}</td>
