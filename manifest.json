@@ -1,0 +1,16 @@
+{
+  "name": "한울타리 볼링",
+  "short_name": "볼링",
+  "description": "한울타리 볼링 모임 점수 관리",
+  "start_url": "/bowling/",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#e8c94a",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎳</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
