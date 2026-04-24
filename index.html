@@ -1204,9 +1204,13 @@ function removeGame() {
 }
 
 function clearScores() {
-  mConfirm('모든 점수를 초기화할까요?', () => {
-    S.players.forEach(p=>{ S.scores[p.id]=Array(S.games).fill(null); });
-    renderGameTable(S.activeGame);
+  const g = S.activeGame;
+  mConfirm(`G${g+1} 점수를 초기화할까요?`, () => {
+    S.players.forEach(p=>{
+      if (S.scores[p.id]) S.scores[p.id][g] = null;
+    });
+    autoSave();
+    renderGameTable(g);
   });
 }
 
