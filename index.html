@@ -494,6 +494,7 @@ const S = {
   name:'한울타리 볼링 모임', date:'', games:5,
   winners:3, losers:3, fee:3000,
   players:[], scores:{}, activeGame:0,
+  initializedGames:new Set(),
   gameSettings:{}, // g → {winners, losers, excluded:[pid,...]}
   mealBet: {
     win:[], lose:[], out:[], gogi:null, gogiTeam:null,
@@ -979,6 +980,14 @@ function switchGame(g) {
     const n = S.players.filter(p => !gs.excluded.includes(p.id)).length;
     const maxWL = Math.floor(n / 2);
     if (gs.winners > maxWL) { gs.winners = maxWL; gs.losers = maxWL; }
+    // 처음 진입하는 게임이면 scores 슬롯 null 초기화
+    if (!S.initializedGames.has(g)) {
+      S.initializedGames.add(g);
+      S.players.forEach(p => {
+        if (!S.scores[p.id]) S.scores[p.id] = Array(S.games).fill(null);
+        S.scores[p.id][g] = null;
+      });
+    }
   }
 
   renderGTabs();
