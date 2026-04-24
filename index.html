@@ -1635,16 +1635,10 @@ function renderEvChart() {
   const extra = getEvChartExtra();
 
   const activeSet = new Set();
-  // hist에 INIT_HISTORY 병합 (localStorage 비어있을 때 fallback)
-  const mergedHist = Object.assign({}, INIT_HISTORY);
-  Object.entries(hist).forEach(([name, dates]) => {
-    if (!mergedHist[name]) mergedHist[name] = {};
-    Object.assign(mergedHist[name], dates);
-  });
-
   allDB.forEach(p => {
     if (p.rare) return;
-    const dm = mergedHist[p.fullName]||{};
+    // hist는 이미 INIT_HISTORY + localStorage 병합된 상태
+    const dm = hist[p.fullName] || INIT_HISTORY[p.fullName] || {};
     const hasRecent = Object.keys(dm).some(d => (dm[d]||[]).some(s=>s!==null&&s!==0));
     if (hasRecent) activeSet.add(p.fullName);
   });
