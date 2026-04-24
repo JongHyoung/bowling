@@ -962,9 +962,7 @@ function switchGame(g) {
   if (typeof g === 'number' && g > 0) {
     const prevG = g - 1;
     const gs = getGameSetting(g);
-    // 이전 게임에서 점수 있는 사람 ID 목록
-    // 이전 게임 점수 저장 강제 실행
-    saveCurrentGame();
+    // 이전 게임 점수는 S.activeGame 변경 전에 이미 저장됨
     const prevScored = S.players
       .filter(p => {
         const sc = S.scores[p.id];
@@ -1608,7 +1606,13 @@ function ecSaveEver(inp, firstName) {
 }
 
 function renderEvChart() {
-  const hist = getScoreHistory();
+  const _histRaw = getScoreHistory();
+  // INIT_HISTORY와 병합 (localStorage 비어있어도 정상 동작)
+  const hist = Object.assign({}, INIT_HISTORY);
+  Object.entries(_histRaw).forEach(([name, dates]) => {
+    if (!hist[name]) hist[name] = {};
+    Object.assign(hist[name], dates);
+  });
   const el = document.getElementById('evchart-output');
 
   const allDatesSet = new Set();
@@ -1631,10 +1635,17 @@ function renderEvChart() {
   const extra = getEvChartExtra();
 
   const activeSet = new Set();
+  // hist에 INIT_HISTORY 병합 (localStorage 비어있을 때 fallback)
+  const mergedHist = Object.assign({}, INIT_HISTORY);
+  Object.entries(hist).forEach(([name, dates]) => {
+    if (!mergedHist[name]) mergedHist[name] = {};
+    Object.assign(mergedHist[name], dates);
+  });
+
   allDB.forEach(p => {
     if (p.rare) return;
-    const dm = hist[p.fullName]||{};
-    const hasRecent = Object.keys(dm).some(d => (dm[d]||[]).some(s=>s!==null&&s!==0));  // 날짜 무관, 점수 있으면 활성
+    const dm = mergedHist[p.fullName]||{};
+    const hasRecent = Object.keys(dm).some(d => (dm[d]||[]).some(s=>s!==null&&s!==0));
     if (hasRecent) activeSet.add(p.fullName);
   });
 
@@ -2338,7 +2349,13 @@ function calcEverFromHistory(dateMap) {
 
 // 에버 DB 갱신
 function refreshEverFromHistory() {
-  const hist = getScoreHistory();
+  const _hist = getScoreHistory();
+  // INIT_HISTORY와 병합
+  const hist = Object.assign({}, INIT_HISTORY);
+  Object.entries(_hist).forEach(([name, dates]) => {
+    if (!hist[name]) hist[name] = {};
+    Object.assign(hist[name], dates);
+  });
   Object.entries(EVER_DB).forEach(([fn, entry]) => {
     // fixedEver가 있으면 에버 고정 (이력 기반 계산 안 함)
     if (entry.fixedEver != null) {
