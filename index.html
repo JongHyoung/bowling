@@ -961,15 +961,24 @@ function switchGame(g) {
 
   if (typeof g === 'number') {
     const gs = getGameSetting(g);
-    if (!S.initializedGames.has(g)) {
-      S.initializedGames.add(g);
-      // 이전 게임의 excluded 그대로 복사 (G2→G1, G3→G2, ...)
+    // 이 게임에 점수 입력된 사람이 있는지 확인
+    const hasScores = S.players.some(p => {
+      const sc = S.scores[p.id];
+      return sc && sc[g] !== null && sc[g] !== undefined;
+    });
+
+    if (!hasScores) {
+      // 점수 미입력 상태 → 이전 게임 excluded 복사
       const prevExcluded = g > 0 ? (getGameSetting(g-1).excluded || []).slice() : [];
       gs.excluded = prevExcluded;
-      S.players.forEach(p => {
-        if (!S.scores[p.id]) S.scores[p.id] = Array(S.games).fill(null);
-        S.scores[p.id][g] = null;
-      });
+      // scores 슬롯 초기화
+      if (!S.initializedGames.has(g)) {
+        S.initializedGames.add(g);
+        S.players.forEach(p => {
+          if (!S.scores[p.id]) S.scores[p.id] = Array(S.games).fill(null);
+          S.scores[p.id][g] = null;
+        });
+      }
     }
     // winners 재조정
     const n = S.players.filter(p => !gs.excluded.includes(p.id)).length;
@@ -1376,13 +1385,30 @@ function renderRanking(players, gameRanks, roleMap, feeEach, feeCumul, feePerGam
   const totalFee     = feeSorted.reduce((sum,p)=>sum+(feePerGame[p.id]||0), 0);
   const totalMeal    = feeSorted.reduce((sum,p)=>sum+(mealFeeMap[p.id]||0), 0);
   const totalGrand   = totalFee + totalMeal;
+  // 정기전: 한울타리 전체 게임비 계산
+  const isJeongi = S.mealBet && S.mealBet.mode === 'jeongi';
+  const hanultariFee = isJeongi
+    ? feeSorted.reduce((sum,p) => {
+        if (p.club !== '한울타리') return sum;
+        // 한울타리는 feePerGame=0이므로 실제 게임수×게임비로 계산
+        const games = (feeEach[p.id]||[]).filter(f => f === 0 && !getGameSetting(feeEach[p.id].indexOf(f)).excluded?.includes(p.id)).length;
+        // 참가 게임 수 × 게임비
+        const playedGames = Array.from({length:gc},(_,g)=>{
+          const gs = getGameSetting(g);
+          return !gs.excluded.includes(p.id) ? 1 : 0;
+        }).reduce((a,b)=>a+b,0);
+        return sum + playedGames * baseFee;
+      }, 0)
+    : 0;
   const mealTotalCol = hasMeal
     ? `<td style="text-align:center;font-weight:700;color:var(--red);border-top:2px solid var(--border);">
         ${totalMeal.toLocaleString()}원</td>`
     : '';
   html += `<tr style="background:var(--surface2);">
     <td colspan="2" style="padding:8px 10px;font-weight:700;font-size:12px;
-      color:var(--muted);border-top:2px solid var(--border);">합계</td>
+      color:var(--muted);border-top:2px solid var(--border);">합계
+      ${isJeongi && hanultariFee>0 ? '<div style="font-size:10px;color:var(--accent);font-weight:400;">한울타리 게임비 ' + hanultariFee.toLocaleString() + '원</div>' : ''}
+    </td>
     <td style="border-top:2px solid var(--border);"></td>
     <td style="font-weight:700;font-size:14px;border-top:2px solid var(--border);padding:8px 6px;">
       ${totalFee.toLocaleString()}원
