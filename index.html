@@ -968,9 +968,18 @@ function switchGame(g) {
     });
 
     if (!hasScores) {
-      // 점수 미입력 상태 → 이전 게임 excluded 복사
-      const prevExcluded = g > 0 ? (getGameSetting(g-1).excluded || []).slice() : [];
-      gs.excluded = prevExcluded;
+      // 점수 미입력 상태
+      if (g === 0) {
+        // G1: 참가자에버표 체크 인원만 참가, 나머지 제외
+        const sel = getEvChartSelected();
+        gs.excluded = S.players
+          .filter(p => !sel.has(p.fullName))
+          .map(p => p.id);
+      } else {
+        // G2~: 이전 게임 excluded 그대로 복사
+        const prevExcluded = (getGameSetting(g-1).excluded || []).slice();
+        gs.excluded = prevExcluded;
+      }
       // scores 슬롯 초기화
       if (!S.initializedGames.has(g)) {
         S.initializedGames.add(g);
