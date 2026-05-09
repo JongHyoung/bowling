@@ -959,35 +959,22 @@ function switchGame(g) {
   autoSave();
   S.activeGame = g;
 
-  // G2 이상: 이전 게임 점수 있는 인원만 자동 참가 처리
-  if (typeof g === 'number' && g > 0) {
-    const prevG = g - 1;
+  if (typeof g === 'number') {
     const gs = getGameSetting(g);
-    // 이전 게임 점수는 S.activeGame 변경 전에 이미 저장됨
-    const prevScored = S.players
-      .filter(p => {
-        const sc = S.scores[p.id];
-        if (!sc) return false;
-        const val = sc[prevG];
-        return val !== null && val !== undefined && val !== '' && !isNaN(+val);
-      })
-      .map(p => p.id);
-    // 매번 이전 게임 기준으로 재설정
-    gs.excluded = S.players
-      .filter(p => !prevScored.includes(p.id))
-      .map(p => p.id);
-    // winners 재조정
-    const n = S.players.filter(p => !gs.excluded.includes(p.id)).length;
-    const maxWL = Math.floor(n / 2);
-    if (gs.winners > maxWL) { gs.winners = maxWL; gs.losers = maxWL; }
-    // 처음 진입하는 게임이면 scores 슬롯 null 초기화
     if (!S.initializedGames.has(g)) {
       S.initializedGames.add(g);
+      // 이전 게임의 excluded 그대로 복사 (G2→G1, G3→G2, ...)
+      const prevExcluded = g > 0 ? (getGameSetting(g-1).excluded || []).slice() : [];
+      gs.excluded = prevExcluded;
       S.players.forEach(p => {
         if (!S.scores[p.id]) S.scores[p.id] = Array(S.games).fill(null);
         S.scores[p.id][g] = null;
       });
     }
+    // winners 재조정
+    const n = S.players.filter(p => !gs.excluded.includes(p.id)).length;
+    const maxWL = Math.floor(n / 2);
+    if (gs.winners > maxWL) { gs.winners = maxWL; gs.losers = maxWL; }
   }
 
   renderGTabs();
@@ -1229,7 +1216,15 @@ function buildRankingData() {
   saveCurrentGame();
   const gc = S.games;
 
-  const players = S.players.map(p => {
+  const players = S.players
+    .filter(p => {
+      // 하나라도 참가한 게임 있는 사람만
+      for (let g = 0; g < gc; g++) {
+        if (!getGameSetting(g).excluded.includes(p.id)) return true;
+      }
+      return false;
+    })
+    .map(p => {
     const sc = S.scores[p.id] || Array(gc).fill(null);
     const vals = Array.from({length:gc}, (_,g) => {
       const gs = getGameSetting(g);
@@ -1269,12 +1264,19 @@ function buildRankingData() {
 
     ranked.forEach(p => {
       let fee = 0;
-      // 정기전 모드: 한울타리 게임비 면제
       const isJeongiMode = S.mealBet && S.mealBet.mode === 'jeongi';
-      const clubFee = (isJeongiMode && p.club === '한울타리') ? 0 : S.fee;
-      if (winnerIds.has(p.id))      { roleMap[p.id][g]='winner'; fee=0; }
-      else if (loserIds.has(p.id))  { roleMap[p.id][g]='loser';  fee=clubFee+extra; }
-      else                           { roleMap[p.id][g]='normal'; fee=clubFee; }
+      const isHanultari = p.club === '한울타리';
+      if (isJeongiMode) {
+        // 정기전: 면제/2배 없음, 한울타리=0원, 매니아=게임비
+        roleMap[p.id][g] = 'normal';
+        fee = isHanultari ? 0 : S.fee;
+      } else {
+        // 밥값내기: 기존 면제/2배 적용
+        const clubFee = S.fee;
+        if (winnerIds.has(p.id))     { roleMap[p.id][g]='winner'; fee=0; }
+        else if (loserIds.has(p.id)) { roleMap[p.id][g]='loser';  fee=clubFee+extra; }
+        else                          { roleMap[p.id][g]='normal'; fee=clubFee; }
+      }
       feeEach[p.id][g]  = fee;
       feePerGame[p.id] += fee;
     });
@@ -2693,7 +2695,16 @@ document.getElementById('record-modal')?.addEventListener('click', function(e) {
 
 function renderMealBet() {
   const section = document.getElementById('score-section');
-  const players = S.players;
+  // G1~G5 중 하나라도 참가한 사람만 (모든 게임에서 제외된 사람 제외) + 에버 내림차순
+  const players = S.players
+    .filter(p => {
+      for (let g = 0; g < S.games; g++) {
+        const gs = getGameSetting(g);
+        if (!gs.excluded.includes(p.id)) return true;
+      }
+      return false;
+    })
+    .sort((a,b) => b.ever - a.ever);
   if (!players.length) {
     section.innerHTML = `<div class="empty"><div class="empty-icon">🍚</div><div class="empty-text">참가자를 추가해주세요</div></div>`;
     return;
@@ -2728,7 +2739,7 @@ function renderMealBet() {
   const scoreHeaders = mb.useGames.map(g=>`<th style="background:var(--surface2);color:var(--accent);font-size:11px;padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;">G${g+1}</th>`).join('');
   const scoreHeaderTotal = mb.useGames.length ? `<th style="background:var(--surface2);color:var(--accent);font-size:11px;padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;">±합산</th>` : '';
 
-  const rows = players.map(p => {
+  const rows = players.map((p, i) => {
     const t = getTeam(p.id);
     const isGogi = mb.gogi === p.id;
     const gogiLabel = isGogi
@@ -2757,7 +2768,7 @@ function renderMealBet() {
 
     return `<tr style="background:${rowBg};">
       <td style="padding:6px 10px;font-size:13px;font-weight:500;border-bottom:1px solid var(--border);">
-        ${p.fullName}<span style="font-size:10px;color:var(--muted);margin-left:4px;">E${p.ever}</span>
+        <span style="font-size:11px;color:var(--muted);margin-right:5px;">${i+1}</span>${p.fullName}<span style="font-size:10px;color:var(--muted);margin-left:4px;">E${p.ever}</span>
         ${isGogi?`<span style="font-size:10px;color:var(--accent);margin-left:4px;">🦆</span>`:''}
       </td>
       <td style="padding:3px 6px;border-bottom:1px solid var(--border);">
