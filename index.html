@@ -195,7 +195,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v1.0.45</span></h1>
+    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v2.0.1</span></h1>
     <div class="sub">한울타리 볼링 모임 · 에버 기준 순위</div>
   </div>
 </header>
@@ -1179,13 +1179,13 @@ function renderGameTable(g) {
           const cur = S.scores[p.id] ? S.scores[p.id][g] : null;
           const va = cur!==null && cur!==undefined ? `value="${cur}"` : '';
           return `<tr>
-            <td style="color:var(--muted);font-size:15px;">${idx+1}</td>
-            <td><strong style="font-size:16px;">${p.fullName}</strong></td>
-            <td style="color:var(--green);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:18px;">${p.ever}</td>
+            <td style="color:var(--muted);font-size:17px;">${idx+1}</td>
+            <td><strong style="font-size:18px;">${p.fullName}</strong></td>
+            <td style="color:var(--green);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:20px;">${p.ever}</td>
             <td><input type="number" id="sc-${p.id}" min="0" max="300" ${va} placeholder="—"
-              style="font-size:18px;"
+              style="font-size:20px;"
               oninput="if(+this.value>300)this.value=300;liveCalc(${p.id},${p.ever},this.value)"></td>
-            <td id="diff-${p.id}" style="font-size:16px;"><span class="neutral">—</span></td>
+            <td id="diff-${p.id}" style="font-size:18px;"><span class="neutral">—</span></td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -1856,6 +1856,16 @@ function exportEvChart() {
   }, 100);
 }
 
+function calcEverBefore(hist, fullName, beforeDate) {
+  // 특정 날짜 이전까지의 점수로 에버 계산 (최근 5대회, floor)
+  const dm = hist[fullName] || {};
+  const dates = Object.keys(dm).filter(d => d < beforeDate).sort();
+  const last5 = dates.slice(-5);
+  const allSc = last5.flatMap(d => (dm[d]||[]).filter(s=>s&&s>0));
+  if (!allSc.length) return null;
+  return Math.floor(allSc.reduce((a,b)=>a+b,0) / allSc.length);
+}
+
 function renderEvChart() {
   const _histRaw = getScoreHistory();
   // INIT_HISTORY와 병합 (localStorage 비어있어도 정상 동작)
@@ -1991,7 +2001,9 @@ function renderEvChart() {
 
       const validSc = sc ? sc.filter(s=>s!=null) : [];
       const avg = validSc.length ? validSc.reduce((a,b)=>a+b,0)/validSc.length : null;
-      const diff = avg!=null ? avg-p.ever : null;
+      const prevEver = calcEverBefore(hist, p.fullName, date);
+      const baseEver = prevEver !== null ? prevEver : p.ever;
+      const diff = avg!=null ? avg-baseEver : null;
       const diffColor = diff==null?'transparent':diff>0?'var(--green)':diff<0?'var(--red)':'var(--muted)';
       const diffStr = diff==null?'':(diff>0?'+':'')+diff.toFixed(1);
 
@@ -2969,7 +2981,7 @@ function renderMealBet() {
     return `<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;
       background:${checked?'rgba(232,201,74,.15)':'var(--surface2)'};
       border:1px solid ${checked?'var(--accent)':'var(--border)'};
-      border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;">
+      border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700;">
       <input type="checkbox" ${checked?'checked':''} onchange="toggleMealGame(${g})"
         style="accent-color:var(--accent);width:13px;height:13px;">
       G${g+1}
@@ -2997,18 +3009,18 @@ function renderMealBet() {
       const rawStr = (raw===null||raw===undefined||raw===0) ? '—' : raw;
       const diffStr = diff===null ? '' : `<div style="font-size:9px;${cls}">${diff>0?'+':''}${diff}</div>`;
       return `<td style="padding:4px 6px;text-align:center;border-bottom:1px solid var(--border);">
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:14px;">${rawStr}</div>${diffStr}
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:15px;">${rawStr}</div>${diffStr}
       </td>`;
     }).join('');
 
     const totalCell = mb.useGames.length ? `<td style="padding:4px 8px;text-align:center;border-bottom:1px solid var(--border);">
-      ${hasDiff ? `<span style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:16px;color:${totalDiff>0?'var(--green)':totalDiff<0?'var(--red)':'var(--muted)'};">${totalDiff>0?'+':''}${totalDiff}</span>` : '—'}
+      ${hasDiff ? `<span style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:17px;color:${totalDiff>0?'var(--green)':totalDiff<0?'var(--red)':'var(--muted)'};">${totalDiff>0?'+':''}${totalDiff}</span>` : '—'}
     </td>` : '';
 
     const rowBg = t==='win'?'rgba(76,175,129,.05)':t==='lose'?'rgba(224,92,92,.05)':t==='out'?'rgba(100,100,100,.05)':'';
 
     return `<tr style="background:${rowBg};">
-      <td style="padding:6px 10px;font-size:13px;font-weight:500;border-bottom:1px solid var(--border);">
+      <td style="padding:6px 10px;font-size:14px;font-weight:500;border-bottom:1px solid var(--border);">
         <span style="font-size:11px;color:var(--muted);margin-right:5px;">${i+1}</span>${p.fullName}<span style="font-size:10px;color:var(--muted);margin-left:4px;">E${p.ever}</span>
         ${isGogi?`<span style="font-size:10px;color:var(--accent);margin-left:4px;">🦆</span>`:''}
       </td>
@@ -3026,7 +3038,7 @@ function renderMealBet() {
 
   // ── 계산 결과
   const mealResult = mb.useGames.length ? calcMealBetFromScores(players) : null;
-  const resultHtml = mealResult ? buildMealResultHtml(mealResult) : `<div style="font-size:12px;color:var(--muted);padding:12px;text-align:center;">위에서 게임을 선택하면 결과가 표시됩니다</div>`;
+  const resultHtml = mealResult ? buildMealResultHtml(mealResult) : `<div style="font-size:13px;color:var(--muted);padding:12px;text-align:center;">위에서 게임을 선택하면 결과가 표시됩니다</div>`;
 
   section.innerHTML = `
     <div class="card" style="margin-bottom:10px;">
@@ -3035,13 +3047,13 @@ function renderMealBet() {
         <div style="display:flex;gap:6px;">
           <button id="mode-normal" onclick="setMealMode('normal')"
             class="btn btn-sm ${S.mealBet.mode!=='jeongi'?'btn-primary':'btn-ghost'}"
-            style="font-size:12px;letter-spacing:0;">
+            style="font-size:13px;letter-spacing:0;">
             👊 밥값내기<br>
             <span style="font-size:10px;font-weight:400;opacity:.85;">5천원 / 1만원</span>
           </button>
           <button id="mode-jeongi" onclick="setMealMode('jeongi')"
             class="btn btn-sm ${S.mealBet.mode==='jeongi'?'btn-primary':'btn-ghost'}"
-            style="font-size:12px;letter-spacing:0;">
+            style="font-size:13px;letter-spacing:0;">
             👊 정기전<br>
             <span style="font-size:10px;font-weight:400;opacity:.85;">1만원 / 2만원</span>
           </button>
@@ -3055,7 +3067,7 @@ function renderMealBet() {
       </div>
       <!-- 참가자 팀배정 + 점수 -->
       <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
         <thead><tr>
           <th style="background:var(--surface2);color:var(--muted);font-size:11px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);">이름</th>
           <th style="background:var(--surface2);color:var(--muted);font-size:11px;padding:6px 8px;border-bottom:1px solid var(--border);">팀</th>
