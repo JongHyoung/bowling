@@ -195,7 +195,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v1.0.42</span></h1>
+    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v1.0.43</span></h1>
     <div class="sub">한울타리 볼링 모임 · 에버 기준 순위</div>
   </div>
 </header>
@@ -1717,8 +1717,8 @@ function ecSaveEver(inp, firstName) {
 
 
 function exportEvChart() {
-  const target = document.getElementById('evchart-output');
-  if (!target || !target.innerHTML.trim()) {
+  const target = document.getElementById('evchart-main-table');
+  if (!target) {
     mAlert('에버계산표를 먼저 불러오세요');
     return;
   }
@@ -1936,7 +1936,7 @@ function renderEvChart() {
 
   el.innerHTML = `
   <div id="evchart-scroll" style="overflow:auto;max-height:70vh;-webkit-overflow-scrolling:touch;">
-  <table style="border-collapse:collapse;font-size:11px;">
+  <table id="evchart-main-table" style="border-collapse:collapse;font-size:11px;">
     <thead><tr>
       <th style="position:sticky;top:0;z-index:3;background:var(--surface2);font-size:10px;color:var(--muted);
         padding:4px 8px;border-bottom:2px solid var(--border);min-width:64px;">날짜</th>
