@@ -195,7 +195,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v2.0.2</span></h1>
+    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v2.0.4</span></h1>
     <div class="sub">한울타리 볼링 모임 · 에버 기준 순위</div>
   </div>
 </header>
@@ -1794,7 +1794,7 @@ function exportEvChart() {
         const s = sc[gi] != null ? sc[gi] : null;
         const isTop = gameTopArr[gi] === p.fullName;
         const isLast5 = last5Map[p.fullName] && last5Map[p.fullName].has(date);
-        const bg = isLast5 ? 'rgba(232,201,74,.15)' : 'transparent';
+        const bg = isLast5 ? 'rgba(232,201,74,.35)' : 'transparent';
         const col = isTop ? '#e05c5c' : '#e0e0e0';
         const fw = isTop ? '900' : '400';
         const val = (s && s!==0) ? `<span style="color:${col};font-weight:${fw};">${s}</span>` : `<span style="color:#333;">—</span>`;
@@ -1984,8 +1984,8 @@ function renderEvChart() {
       const sc = (hist[p.fullName]||{})[date];
       const borderL = i===hCount?'2px solid var(--accent)':'1px solid var(--border)';
       const isLast5 = last5datesMap[p.fullName].has(date);
-      const cellBg = isLast5?'rgba(232,201,74,.18)':'var(--surface)';
-      const cellOut = isLast5?'1px solid rgba(232,201,74,.4)':'none';
+      const cellBg = isLast5?'rgba(232,201,74,.35)':'var(--surface)';
+      const cellOut = isLast5?'1px solid rgba(232,201,74,.8)':'none';
 
       const scoreLines = Array.from({length:maxG},(_,gi)=>{
         const s = sc && sc[gi] != null ? sc[gi] : null;
