@@ -195,7 +195,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v1.0.43</span></h1>
+    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v1.0.45</span></h1>
     <div class="sub">한울타리 볼링 모임 · 에버 기준 순위</div>
   </div>
 </header>
@@ -1717,20 +1717,132 @@ function ecSaveEver(inp, firstName) {
 
 
 function exportEvChart() {
-  const target = document.getElementById('evchart-main-table');
-  if (!target) {
-    mAlert('에버계산표를 먼저 불러오세요');
-    return;
-  }
-  mAlert('이미지 생성 중... 잠시만 기다려주세요');
+  const _histRaw = getScoreHistory();
+  const hist = Object.assign({}, INIT_HISTORY);
+  Object.entries(_histRaw).forEach(([name, dates]) => {
+    if (!hist[name]) hist[name] = {};
+    Object.assign(hist[name], dates);
+  });
+
+  // 전체 날짜 중 최근 10대회
+  const allDatesSet = new Set();
+  Object.values(hist).forEach(dm => Object.keys(dm).forEach(d => allDatesSet.add(d)));
+  const allDates = [...allDatesSet].sort();
+  const last10 = allDates.slice(-10);
+
+  // 활성 선수 (에버계산표와 동일)
+  const activeSet = typeof getActiveSet === 'function' ? getActiveSet() : new Set();
+  const allDB = Object.entries(EVER_DB)
+    .map(([k,v])=>({firstName:k,...v}))
+    .filter(p => activeSet.has(p.fullName))
+    .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)); });
+
+  if (!allDB.length) { mAlert('표시할 데이터가 없습니다'); return; }
+
+  // 선수별 최근 5대회 (음영용)
+  const last5Map = {};
+  allDB.forEach(p => {
+    const dm = hist[p.fullName]||{};
+    const vd = Object.keys(dm).filter(d=>(dm[d]||[]).some(s=>s!==null&&s!==0)).sort();
+    last5Map[p.fullName] = new Set(vd.slice(-5));
+  });
+
+  // 날짜별 게임별 1위
+  const dateGameTop = {};
+  last10.forEach(date => {
+    const scores = allDB.map(p => {
+      const sc = (hist[p.fullName]||{})[date]||[];
+      return {name: p.fullName, scores: sc};
+    });
+    const maxG = Math.max(...scores.map(x=>x.scores.length), 0);
+    dateGameTop[date] = [];
+    for (let gi=0; gi<maxG; gi++) {
+      let topName = null, topVal = -1;
+      scores.forEach(({name, scores:sc}) => {
+        if (sc[gi] && sc[gi] > topVal) { topVal = sc[gi]; topName = name; }
+      });
+      dateGameTop[date][gi] = topName;
+    }
+  });
+
+  // 테이블 HTML 생성
+  let t = `<div style="background:#0d0d1a;padding:12px;display:inline-block;">`;
+  t += `<table style="border-collapse:collapse;font-size:11px;color:#e0e0e0;white-space:nowrap;">`;
+
+  // 헤더행
+  t += `<thead><tr>`;
+  t += `<th style="padding:5px 8px;background:#1a1a2e;border:1px solid #2a2a3a;text-align:left;color:#666;min-width:60px;">날짜</th>`;
+  allDB.forEach(p => {
+    const col = p.club==='한울타리'?'#4fc3a1':'#b39ddb';
+    t += `<th style="padding:5px 7px;background:#1a1a2e;border:1px solid #2a2a3a;text-align:center;color:${col};font-size:11px;">${p.fullName}</th>`;
+  });
+  t += `</tr></thead><tbody>`;
+
+  // 날짜별 행
+  last10.forEach(date => {
+    const maxG = Math.max(...allDB.map(p => ((hist[p.fullName]||{})[date]||[]).length), 0);
+    if (!maxG) return;
+    const gameTopArr = dateGameTop[date]||[];
+
+    for (let gi=0; gi<maxG; gi++) {
+      t += `<tr>`;
+      if (gi === 0) {
+        t += `<td rowspan="${maxG}" style="padding:4px 8px;border:1px solid #2a2a3a;background:#111128;color:#888;font-size:10px;vertical-align:top;">'${date}</td>`;
+      }
+      allDB.forEach(p => {
+        const sc = (hist[p.fullName]||{})[date]||[];
+        const s = sc[gi] != null ? sc[gi] : null;
+        const isTop = gameTopArr[gi] === p.fullName;
+        const isLast5 = last5Map[p.fullName] && last5Map[p.fullName].has(date);
+        const bg = isLast5 ? 'rgba(232,201,74,.15)' : 'transparent';
+        const col = isTop ? '#e05c5c' : '#e0e0e0';
+        const fw = isTop ? '900' : '400';
+        const val = (s && s!==0) ? `<span style="color:${col};font-weight:${fw};">${s}</span>` : `<span style="color:#333;">—</span>`;
+        t += `<td style="padding:3px 6px;border:1px solid #2a2a3a;background:${bg};text-align:center;">${val}</td>`;
+      });
+      t += `</tr>`;
+    }
+
+    // 대회별 diff 행
+    t += `<tr>`;
+    t += `<td style="border:1px solid #2a2a3a;background:#0d0d1a;"></td>`;
+    allDB.forEach(p => {
+      const sc = (hist[p.fullName]||{})[date]||[];
+      const valid = sc.filter(s=>s&&s>0);
+      let diffTxt = '';
+      if (valid.length) {
+        const avg = valid.reduce((a,b)=>a+b,0)/valid.length;
+        const diff = +(avg - p.ever).toFixed(1);
+        const col = diff>0?'#4fc3a1':diff<0?'#e05c5c':'#888';
+        diffTxt = `<span style="color:${col};font-size:10px;">${diff>0?'+':''}${diff}</span>`;
+      }
+      t += `<td style="padding:2px 6px;border:1px solid #2a2a3a;background:#0d0d1a;text-align:center;">${diffTxt}</td>`;
+    });
+    t += `</tr>`;
+  });
+
+  // 에버 행
+  t += `<tr>`;
+  t += `<td style="padding:5px 8px;border:1px solid #2a2a3a;background:#1a1a10;color:#e8c94a;font-weight:700;">에버</td>`;
+  allDB.forEach(p => {
+    t += `<td style="padding:5px 6px;border:1px solid #2a2a3a;background:#1a1a10;text-align:center;color:#e8c94a;font-weight:700;font-size:12px;">${p.everRaw||p.ever}</td>`;
+  });
+  t += `</tr>`;
+  t += `</tbody></table></div>`;
+
+  // 임시 div에 넣고 캡처
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;';
+  wrap.innerHTML = t;
+  document.body.appendChild(wrap);
+
   setTimeout(() => {
-    html2canvas(target, {
-      backgroundColor: '#1a1a2e',
+    html2canvas(wrap.firstChild, {
+      backgroundColor: '#0d0d1a',
       scale: 2,
       useCORS: true,
-      scrollX: 0,
-      scrollY: 0,
     }).then(canvas => {
+      document.body.removeChild(wrap);
       const dataUrl = canvas.toDataURL('image/png');
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow:auto;';
@@ -1741,7 +1853,7 @@ function exportEvChart() {
       `;
       document.body.appendChild(overlay);
     });
-  }, 200);
+  }, 100);
 }
 
 function renderEvChart() {
