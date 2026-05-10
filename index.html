@@ -195,7 +195,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v2.0.1</span></h1>
+    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v2.0.2</span></h1>
     <div class="sub">한울타리 볼링 모임 · 에버 기준 순위</div>
   </div>
 </header>
@@ -1812,7 +1812,9 @@ function exportEvChart() {
       let diffTxt = '';
       if (valid.length) {
         const avg = valid.reduce((a,b)=>a+b,0)/valid.length;
-        const diff = +(avg - p.ever).toFixed(1);
+        const prevEver = calcEverBefore(hist, p.fullName, date);
+        const baseEver = prevEver !== null ? prevEver : p.ever;
+        const diff = +(avg - baseEver).toFixed(1);
         const col = diff>0?'#4fc3a1':diff<0?'#e05c5c':'#888';
         diffTxt = `<span style="color:${col};font-size:10px;">${diff>0?'+':''}${diff}</span>`;
       }
