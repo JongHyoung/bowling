@@ -1717,92 +1717,31 @@ function ecSaveEver(inp, firstName) {
 
 
 function exportEvChart() {
-  // 최근 10게임만 포함한 임시 테이블 생성
-  const _histRaw = getScoreHistory();
-  const hist = Object.assign({}, INIT_HISTORY);
-  Object.entries(_histRaw).forEach(([name, dates]) => {
-    if (!hist[name]) hist[name] = {};
-    Object.assign(hist[name], dates);
-  });
-
-  // 전체 날짜 목록 (최근 10개)
-  const allDatesSet = new Set();
-  Object.values(hist).forEach(dm => Object.keys(dm).forEach(d => allDatesSet.add(d)));
-  const allDates = [...allDatesSet].sort();
-  const last10 = allDates.slice(-10);
-
-  // 활성 선수 목록
-  const activeSet = getActiveSet ? getActiveSet() : new Set();
-  const allDB = Object.entries(EVER_DB)
-    .map(([k,v])=>({firstName:k,...v}))
-    .filter(p => activeSet.has(p.fullName) && !p.rare)
-    .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return b.ever-a.ever; });
-
-  if (!allDB.length) { mAlert('표시할 데이터가 없습니다'); return; }
-
-  // 임시 캔버스용 div 생성
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#1a1a2e;padding:16px;font-family:-apple-system,Arial,sans-serif;';
-
-  // 테이블 생성
-  let tableHtml = '<table style="border-collapse:collapse;font-size:11px;color:#e0e0e0;">';
-  // 헤더
-  tableHtml += '<thead><tr>';
-  tableHtml += '<th style="padding:6px 10px;background:#252545;border:1px solid #333;text-align:left;min-width:50px;">날짜</th>';
-  allDB.forEach(p => {
-    const clubColor = p.club==='한울타리'?'#4caf81':'#b39ddb';
-    tableHtml += `<th style="padding:6px 8px;background:#252545;border:1px solid #333;text-align:center;min-width:44px;color:${clubColor};">${p.fullName}</th>`;
-  });
-  tableHtml += '</tr></thead><tbody>';
-
-  // 날짜별 행
-  last10.forEach(date => {
-    tableHtml += `<tr><td style="padding:5px 10px;border:1px solid #333;background:#1e1e3a;color:#aaa;white-space:nowrap;">'${date}</td>`;
-    allDB.forEach(p => {
-      const dm = hist[p.fullName] || {};
-      const scores = dm[date] || [];
-      const validScores = scores.filter(s => s !== null && s !== 0);
-      let cellHtml = '';
-      validScores.forEach(s => {
-        const diff = s - p.ever;
-        const col = diff > 0 ? '#4caf81' : diff < 0 ? '#e05c5c' : '#aaa';
-        cellHtml += `<div style="text-align:center;color:${col};font-weight:${Math.abs(diff)>20?'700':'400'};">${s}</div>`;
-      });
-      if (!cellHtml) cellHtml = '<div style="text-align:center;color:#444;">—</div>';
-      tableHtml += `<td style="padding:3px 6px;border:1px solid #333;">${cellHtml}</td>`;
-    });
-    tableHtml += '</tr>';
-  });
-
-  // 에버 행
-  tableHtml += '<tr>';
-  tableHtml += '<td style="padding:5px 10px;border:1px solid #333;background:#2a2a1a;color:#e8c94a;font-weight:700;">에버</td>';
-  allDB.forEach(p => {
-    tableHtml += `<td style="padding:5px 6px;border:1px solid #333;background:#2a2a1a;text-align:center;color:#e8c94a;font-weight:700;font-size:13px;">${p.everRaw||p.ever}</td>`;
-  });
-  tableHtml += '</tr>';
-  tableHtml += '</tbody></table>';
-
-  wrap.innerHTML = tableHtml;
-  document.body.appendChild(wrap);
-
+  const target = document.getElementById('evchart-output');
+  if (!target || !target.innerHTML.trim()) {
+    mAlert('에버계산표를 먼저 불러오세요');
+    return;
+  }
   mAlert('이미지 생성 중... 잠시만 기다려주세요');
   setTimeout(() => {
-    html2canvas(wrap, { backgroundColor: '#1a1a2e', scale: 2 }).then(canvas => {
-      document.body.removeChild(wrap);
-      // 화면에 이미지 표시 → 길게 눌러서 저장
+    html2canvas(target, {
+      backgroundColor: '#1a1a2e',
+      scale: 2,
+      useCORS: true,
+      scrollX: 0,
+      scrollY: 0,
+    }).then(canvas => {
       const dataUrl = canvas.toDataURL('image/png');
-      // 모달로 표시
       const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow:auto;';
       overlay.innerHTML = `
         <div style="color:#fff;font-size:13px;margin-bottom:12px;">📱 이미지를 <strong>길게 눌러서</strong> 저장하세요</div>
-        <img src="${dataUrl}" style="max-width:100%;max-height:80vh;border-radius:8px;">
+        <img src="${dataUrl}" style="max-width:100%;border-radius:8px;">
         <button onclick="this.parentNode.remove()" style="margin-top:16px;padding:10px 24px;background:#e8c94a;color:#000;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">닫기</button>
       `;
       document.body.appendChild(overlay);
     });
-  }, 100);
+  }, 200);
 }
 
 function renderEvChart() {
