@@ -873,7 +873,7 @@ function loadAllFromDB() {
     .filter(e => sel.has(e.fullName))
     .sort((a,b)=>{
       if (a.club !== b.club) return a.club==='한울타리'?-1:1;
-      return b.ever - a.ever;
+      return (b.ever - a.ever) || ((b.everRaw||b.ever) - (a.everRaw||a.ever));
     });
   entries.forEach(entry=>{
     if (already.includes(entry.fullName)) return;
@@ -1128,7 +1128,7 @@ function renderGameTable(g) {
     })
     .sort((a,b) => {
       if (a.club !== b.club) return a.club==='한울타리'?-1:1;
-      return b.ever - a.ever;
+      return (b.ever - a.ever) || ((b.everRaw||b.ever) - (a.everRaw||a.ever));
     });
 
   document.getElementById('score-section').innerHTML = `
@@ -1309,7 +1309,7 @@ function buildRankingData() {
     const participated = players.filter(p => p.vals[g].diff !== null);
     return [...participated].sort((a,b) => {
       if (b.vals[g].diff !== a.vals[g].diff) return b.vals[g].diff - a.vals[g].diff;
-      return b.ever - a.ever;
+      return (b.ever - a.ever) || ((b.everRaw||b.ever) - (a.everRaw||a.ever));
     });
   });
 
@@ -1784,11 +1784,11 @@ function renderEvChart() {
 
   const inactivePlayers = allDB
     .filter(p => !activeSet.has(p.fullName))
-    .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return b.ever-a.ever; });
+    .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)); });
 
   const allPlayers = allDB
     .filter(p => activeSet.has(p.fullName) || extra.has(p.fullName))
-    .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return b.ever-a.ever; });
+    .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)); });
 
   if (!allPlayers.length) {
     el.innerHTML = `<div class="empty"><div class="empty-icon">📈</div><div class="empty-text">최근 2개월 내 참가자가 없습니다</div></div>`;
@@ -2163,7 +2163,7 @@ function renderEvChartSelect() {
   const sel = getEvChartSelected();
   const all = EVER_DB_RAW.sort((a,b)=>{
     if(a.club!==b.club) return a.club==='한울타리'?-1:1;
-    return b.ever-a.ever;
+    return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever));
   });
 
   const clubs = ['한울타리', '매니아'];
@@ -2227,7 +2227,7 @@ function applyEvChartSelection() {
     seq = 1;
     const sorted = EVER_DB_RAW
       .filter(p=>sel.has(p.full))
-      .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return b.ever-a.ever; });
+      .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)); });
     sorted.forEach(p=>{
       const firstName = p.full.slice(1);
       const entry = EVER_DB[firstName];
@@ -2268,7 +2268,7 @@ function renderEverTable() {
   let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">에버 숫자 클릭 → 수정 · 하단에서 표시 인원 선택 가능</div>`;
 
   clubOrder.forEach(club => {
-    const group = all.filter(p=>p.club===club).sort((a,b)=>b.ever-a.ever);
+    const group = all.filter(p=>p.club===club).sort((a,b)=>(b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)));
     if (!group.length) return;
 
     const clubLabel = club || '미분류';
@@ -2620,7 +2620,7 @@ function renderHistoryList() {
   const everEntries = Object.entries(EVER_DB)
     .map(([k,v])=>({...v, firstName:k}))
     .filter(e => hist[e.fullName] && Object.keys(hist[e.fullName]).length)
-    .sort((a,b)=>b.ever-a.ever);
+    .sort((a,b)=>(b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)));
 
   let html = '';
 
