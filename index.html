@@ -195,7 +195,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v2.2.0</span></h1>
+    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v2.3.4</span></h1>
     <div class="sub">한울타리 볼링 모임 · 에버 기준 순위</div>
   </div>
 </header>
@@ -343,6 +343,8 @@
 </div>
 
 <!-- 📁 기록 -->
+
+
 <div class="page" id="page-history">
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -1805,7 +1807,8 @@ function exportEvChart() {
         const isTop = gameTopArr[gi] === p.fullName;
         const isLast5 = last5Map[p.fullName] && last5Map[p.fullName].has(date);
         const bg = isLast5 ? 'rgba(232,201,74,.35)' : 'transparent';
-        const col = isTop ? '#e05c5c' : '#e0e0e0';
+        const is200img = s !== null && s >= 200;
+        const col = isTop ? '#e05c5c' : is200img ? '#2dd4bf' : '#e0e0e0';
         const fw = isTop ? '900' : '400';
         const val = (s && s!==0) ? `<span style="color:${col};font-weight:${fw};">${s}</span>` : `<span style="color:#333;">—</span>`;
         const isLastH = allDB[allDB.indexOf(p)+1] && allDB[allDB.indexOf(p)+1].club !== p.club;
@@ -2023,8 +2026,11 @@ function renderEvChart() {
       const scoreLines = Array.from({length:maxG},(_,gi)=>{
         const s = sc && sc[gi] != null ? sc[gi] : null;
         const isTop = gameTopArr[gi]===p.fullName;
+        const is200 = s !== null && s >= 200;
+        const scoreColor = isTop ? '#e05c5c' : is200 ? '#2dd4bf' : 'var(--text)';
+        const scoreWeight = isTop ? '900' : is200 ? '400' : '400';
         const display = (s!=null && s!==0)
-          ? `<span style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:14px;color:${isTop?'#e05c5c':'var(--text)'};font-weight:${isTop?'900':'400'};">${s}</span>`
+          ? `<span style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;letter-spacing:0.5px;font-size:14px;color:${scoreColor};font-weight:${scoreWeight};">${s}</span>`
           : s===0
             ? `<span style="font-size:10px;color:var(--muted);">불참</span>`
             : `<span style="font-size:13px;color:var(--surface2);">·</span>`;
@@ -3379,6 +3385,150 @@ if ('serviceWorker' in navigator && location.hostname === 'jonghyoung.github.io'
       .catch(function(err) { console.log('SW 실패:', err); });
   });
 }
+
+// ─── 차트 데이터 ──────────────────────────────
+const CHART_DATA = {"박찬익": [{"date": "26.01.01", "avg": 220.8, "ever": 199.6}, {"date": "26.01.03", "avg": 192.4, "ever": 200.8}, {"date": "26.01.04", "avg": 194.2, "ever": 200.2}, {"date": "26.01.10", "avg": 210.8, "ever": 201.5}, {"date": "26.01.11", "avg": 208.8, "ever": 205.2}, {"date": "26.01.17", "avg": 194.0, "ever": 199.6}, {"date": "26.01.18", "avg": 215.6, "ever": 204.4}, {"date": "26.01.24", "avg": 181.6, "ever": 201.8}, {"date": "26.01.31", "avg": 193.4, "ever": 198.7}, {"date": "26.02.01", "avg": 210.2, "ever": 199.0}, {"date": "26.02.07", "avg": 192.8, "ever": 198.7}, {"date": "26.02.08", "avg": 182.2, "ever": 192.0}, {"date": "26.02.21", "avg": 215.2, "ever": 198.8}, {"date": "26.02.22", "avg": 201.4, "ever": 200.4}, {"date": "26.02.28", "avg": 186.6, "ever": 195.6}, {"date": "26.03.01", "avg": 202.6, "ever": 197.6}, {"date": "26.03.02", "avg": 202.0, "ever": 201.6}, {"date": "26.03.07", "avg": 196.0, "ever": 197.9}, {"date": "26.03.08", "avg": 205.6, "ever": 198.7}, {"date": "26.03.15", "avg": 209.0, "ever": 203.0}, {"date": "26.03.17", "avg": 164.6, "ever": 195.7}, {"date": "26.03.21", "avg": 198.4, "ever": 194.7}, {"date": "26.03.22", "avg": 192.4, "ever": 194.0}, {"date": "26.03.28", "avg": 184.2, "ever": 190.0}, {"date": "26.03.29", "avg": 202.0, "ever": 188.5}, {"date": "26.04.04", "avg": 197.5, "ever": 195.4}, {"date": "26.04.05", "avg": 216.2, "ever": 199.0}, {"date": "26.04.11", "avg": 200.2, "ever": 200.6}, {"date": "26.04.12", "avg": 199.4, "ever": 203.0}, {"date": "26.04.18", "avg": 187.2, "ever": 200.5}, {"date": "26.04.19", "avg": 183.4, "ever": 197.6}, {"date": "26.04.25", "avg": 201.6, "ever": 194.4}, {"date": "26.04.26", "avg": 209.2, "ever": 196.5}, {"date": "26.05.02", "avg": 201.2, "ever": 196.9}, {"date": "26.05.03", "avg": 181.2, "ever": 195.3}, {"date": "26.05.05", "avg": 192.4, "ever": 197.1}, {"date": "26.05.09", "avg": 209.0, "ever": 198.2}, {"date": "26.05.10", "avg": 189.4, "ever": 194.0}, {"date": "26.05.16", "avg": 203.8, "ever": 194.6}, {"date": "26.05.17", "avg": 199.8, "ever": 198.5}], "김영민": [{"date": "26.01.01", "avg": 204.6, "ever": 211.8}, {"date": "26.01.10", "avg": 208.0, "ever": 214.1}, {"date": "26.01.11", "avg": 229.8, "ever": 217.2}, {"date": "26.01.17", "avg": 186.8, "ever": 209.3}, {"date": "26.01.18", "avg": 180.4, "ever": 201.7}, {"date": "26.01.24", "avg": 198.6, "ever": 200.4}, {"date": "26.01.25", "avg": 194.0, "ever": 197.9}, {"date": "26.01.31", "avg": 236.0, "ever": 199.2}, {"date": "26.02.01", "avg": 204.6, "ever": 202.7}, {"date": "26.02.07", "avg": 224.2, "ever": 211.5}, {"date": "26.02.08", "avg": 191.0, "ever": 210.0}, {"date": "26.02.14", "avg": 199.8, "ever": 211.6}, {"date": "26.02.21", "avg": 205.0, "ever": 205.1}, {"date": "26.02.22", "avg": 203.6, "ever": 204.9}, {"date": "26.03.01", "avg": 218.0, "ever": 203.6}, {"date": "26.03.02", "avg": 205.7, "ever": 206.6}, {"date": "26.03.07", "avg": 226.8, "ever": 211.6}, {"date": "26.03.08", "avg": 199.2, "ever": 210.5}, {"date": "26.03.14", "avg": 206.8, "ever": 211.2}, {"date": "26.03.15", "avg": 213.0, "ever": 210.2}, {"date": "26.03.17", "avg": 179.6, "ever": 205.0}, {"date": "26.03.22", "avg": 214.8, "ever": 202.5}, {"date": "26.03.28", "avg": 192.0, "ever": 201.4}, {"date": "26.03.29", "avg": 201.8, "ever": 200.6}, {"date": "26.04.04", "avg": 189.5, "ever": 195.4}, {"date": "26.04.05", "avg": 178.4, "ever": 195.2}, {"date": "26.04.12", "avg": 194.6, "ever": 191.2}, {"date": "26.04.18", "avg": 192.5, "ever": 191.2}, {"date": "26.04.19", "avg": 205.8, "ever": 192.0}, {"date": "26.04.25", "avg": 208.2, "ever": 196.0}, {"date": "26.04.26", "avg": 192.0, "ever": 198.9}, {"date": "26.05.02", "avg": 209.0, "ever": 201.9}, {"date": "26.05.03", "avg": 200.0, "ever": 203.0}, {"date": "26.05.05", "avg": 176.4, "ever": 197.1}, {"date": "26.05.09", "avg": 212.5, "ever": 197.4}, {"date": "26.05.10", "avg": 208.4, "ever": 200.8}, {"date": "26.05.17", "avg": 181.6, "ever": 195.1}], "김재응": [{"date": "26.01.03", "avg": 207.4, "ever": 206.6}, {"date": "26.01.04", "avg": 211.4, "ever": 211.5}, {"date": "26.01.10", "avg": 192.8, "ever": 206.1}, {"date": "26.01.11", "avg": 200.8, "ever": 199.5}, {"date": "26.01.17", "avg": 214.2, "ever": 205.8}, {"date": "26.01.18", "avg": 190.2, "ever": 202.2}, {"date": "26.01.24", "avg": 232.0, "ever": 206.5}, {"date": "26.01.25", "avg": 211.6, "ever": 209.8}, {"date": "26.01.31", "avg": 217.6, "ever": 213.1}, {"date": "26.02.01", "avg": 222.6, "ever": 214.8}, {"date": "26.02.08", "avg": 169.2, "ever": 210.6}, {"date": "26.02.14", "avg": 209.2, "ever": 205.9}, {"date": "26.02.21", "avg": 179.6, "ever": 199.2}, {"date": "26.02.22", "avg": 200.8, "ever": 195.8}, {"date": "26.02.28", "avg": 204.8, "ever": 192.0}, {"date": "26.03.01", "avg": 206.6, "ever": 199.8}, {"date": "26.03.07", "avg": 184.4, "ever": 195.2}, {"date": "26.03.08", "avg": 215.0, "ever": 202.3}, {"date": "26.03.14", "avg": 205.0, "ever": 203.1}, {"date": "26.03.15", "avg": 197.0, "ever": 201.5}, {"date": "26.03.17", "avg": 189.0, "ever": 197.8}, {"date": "26.03.21", "avg": 186.8, "ever": 198.3}, {"date": "26.03.22", "avg": 184.0, "ever": 191.8}, {"date": "26.03.28", "avg": 182.5, "ever": 188.1}, {"date": "26.03.29", "avg": 190.4, "ever": 186.7}, {"date": "26.04.04", "avg": 172.5, "ever": 182.8}, {"date": "26.04.05", "avg": 205.6, "ever": 186.6}, {"date": "26.04.11", "avg": 169.2, "ever": 184.2}, {"date": "26.04.12", "avg": 174.0, "ever": 182.5}, {"date": "26.04.18", "avg": 187.4, "ever": 181.9}, {"date": "26.04.19", "avg": 191.2, "ever": 186.2}, {"date": "26.04.25", "avg": 188.8, "ever": 182.7}, {"date": "26.05.05", "avg": 181.8, "ever": 184.8}, {"date": "26.05.10", "avg": 183.2, "ever": 186.7}, {"date": "26.05.16", "avg": 189.0, "ever": 187.0}, {"date": "26.05.17", "avg": 200.0, "ever": 188.8}], "김애란": [{"date": "26.01.03", "avg": 178.2, "ever": 185.8}, {"date": "26.01.10", "avg": 213.5, "ever": 191.7}, {"date": "26.01.18", "avg": 172.2, "ever": 188.4}, {"date": "26.01.24", "avg": 185.0, "ever": 188.5}, {"date": "26.01.31", "avg": 212.6, "ever": 191.4}, {"date": "26.02.01", "avg": 192.0, "ever": 194.3}, {"date": "26.02.08", "avg": 181.0, "ever": 188.6}, {"date": "26.02.14", "avg": 206.8, "ever": 195.0}, {"date": "26.02.21", "avg": 180.2, "ever": 194.0}, {"date": "26.02.28", "avg": 180.4, "ever": 187.3}, {"date": "26.03.07", "avg": 182.0, "ever": 185.2}, {"date": "26.03.08", "avg": 193.4, "ever": 187.8}, {"date": "26.03.14", "avg": 187.5, "ever": 184.6}, {"date": "26.03.22", "avg": 203.4, "ever": 189.4}, {"date": "26.04.04", "avg": 186.5, "ever": 190.9}, {"date": "26.04.11", "avg": 162.0, "ever": 187.6}, {"date": "26.04.12", "avg": 169.6, "ever": 182.2}, {"date": "26.04.25", "avg": 197.2, "ever": 184.6}, {"date": "26.05.03", "avg": 190.6, "ever": 181.8}, {"date": "26.05.09", "avg": 186.0, "ever": 181.7}, {"date": "26.05.10", "avg": 204.3, "ever": 188.4}, {"date": "26.05.16", "avg": 180.6, "ever": 190.9}, {"date": "26.05.17", "avg": 179.2, "ever": 187.1}], "박춘호": [{"date": "26.01.01", "avg": 181.4, "ever": 187.3}, {"date": "26.01.03", "avg": 206.3, "ever": 194.2}, {"date": "26.01.04", "avg": 194.4, "ever": 195.3}, {"date": "26.01.10", "avg": 188.2, "ever": 192.2}, {"date": "26.01.11", "avg": 188.6, "ever": 190.6}, {"date": "26.01.24", "avg": 198.8, "ever": 194.6}, {"date": "26.01.25", "avg": 200.8, "ever": 194.4}, {"date": "26.02.07", "avg": 179.6, "ever": 191.3}, {"date": "26.02.08", "avg": 182.2, "ever": 190.0}, {"date": "26.02.14", "avg": 206.5, "ever": 193.0}, {"date": "26.03.07", "avg": 182.4, "ever": 189.6}, {"date": "26.03.08", "avg": 195.6, "ever": 188.5}, {"date": "26.03.17", "avg": 166.2, "ever": 185.8}, {"date": "26.03.21", "avg": 174.8, "ever": 184.2}, {"date": "26.03.22", "avg": 189.8, "ever": 181.8}, {"date": "26.03.28", "avg": 174.8, "ever": 180.5}, {"date": "26.03.29", "avg": 179.2, "ever": 177.0}, {"date": "26.04.11", "avg": 140.5, "ever": 173.0}, {"date": "26.04.12", "avg": 193.4, "ever": 177.1}, {"date": "26.04.18", "avg": 182.0, "ever": 175.4}, {"date": "26.04.19", "avg": 175.0, "ever": 175.4}, {"date": "26.05.05", "avg": 186.4, "ever": 176.9}, {"date": "26.05.09", "avg": 170.2, "ever": 181.9}, {"date": "26.05.10", "avg": 180.2, "ever": 179.1}], "최진희": [{"date": "26.01.01", "avg": 191.8, "ever": 185.2}, {"date": "26.01.10", "avg": 187.5, "ever": 185.8}, {"date": "26.01.11", "avg": 207.8, "ever": 191.1}, {"date": "26.01.17", "avg": 182.8, "ever": 190.4}, {"date": "26.01.18", "avg": 171.2, "ever": 188.2}, {"date": "26.01.24", "avg": 205.4, "ever": 191.1}, {"date": "26.01.25", "avg": 198.6, "ever": 193.2}, {"date": "26.01.31", "avg": 208.0, "ever": 193.2}, {"date": "26.02.01", "avg": 197.8, "ever": 196.2}, {"date": "26.02.07", "avg": 174.2, "ever": 196.8}, {"date": "26.02.08", "avg": 181.8, "ever": 192.1}, {"date": "26.02.14", "avg": 198.5, "ever": 191.8}, {"date": "26.02.21", "avg": 174.8, "ever": 184.9}, {"date": "26.02.22", "avg": 179.0, "ever": 181.0}, {"date": "26.03.01", "avg": 172.6, "ever": 180.6}, {"date": "26.03.02", "avg": 214.5, "ever": 188.5}, {"date": "26.03.07", "avg": 182.8, "ever": 185.9}, {"date": "26.03.08", "avg": 185.2, "ever": 187.9}, {"date": "26.03.14", "avg": 192.8, "ever": 190.4}, {"date": "26.03.15", "avg": 206.6, "ever": 197.2}, {"date": "26.03.22", "avg": 200.6, "ever": 193.6}, {"date": "26.03.28", "avg": 173.8, "ever": 192.5}, {"date": "26.04.04", "avg": 182.8, "ever": 191.6}, {"date": "26.04.05", "avg": 204.2, "ever": 194.0}, {"date": "26.04.12", "avg": 156.8, "ever": 184.0}, {"date": "26.04.18", "avg": 148.8, "ever": 173.6}, {"date": "26.04.19", "avg": 176.2, "ever": 174.1}, {"date": "26.04.25", "avg": 170.2, "ever": 171.2}, {"date": "26.04.26", "avg": 191.0, "ever": 168.6}, {"date": "26.05.02", "avg": 164.6, "ever": 170.2}, {"date": "26.05.03", "avg": 158.8, "ever": 172.2}, {"date": "26.05.05", "avg": 157.2, "ever": 168.4}, {"date": "26.05.09", "avg": 197.8, "ever": 172.9}, {"date": "26.05.10", "avg": 175.0, "ever": 169.5}, {"date": "26.05.17", "avg": 171.8, "ever": 171.0}], "김애경": [{"date": "26.01.01", "avg": 157.2, "ever": 169.8}, {"date": "26.01.03", "avg": 170.2, "ever": 167.4}, {"date": "26.01.04", "avg": 169.2, "ever": 167.4}, {"date": "26.01.10", "avg": 183.0, "ever": 170.1}, {"date": "26.01.11", "avg": 189.0, "ever": 173.3}, {"date": "26.01.17", "avg": 197.6, "ever": 181.8}, {"date": "26.01.18", "avg": 192.4, "ever": 186.4}, {"date": "26.01.24", "avg": 173.6, "ever": 187.3}, {"date": "26.01.25", "avg": 168.4, "ever": 184.2}, {"date": "26.01.31", "avg": 169.4, "ever": 180.3}, {"date": "26.02.01", "avg": 169.8, "ever": 174.7}, {"date": "26.02.07", "avg": 175.4, "ever": 171.3}, {"date": "26.02.08", "avg": 156.0, "ever": 167.8}, {"date": "26.02.21", "avg": 174.8, "ever": 169.1}, {"date": "26.02.22", "avg": 191.2, "ever": 173.4}, {"date": "26.02.28", "avg": 179.2, "ever": 175.3}, {"date": "26.03.02", "avg": 156.7, "ever": 171.0}, {"date": "26.03.07", "avg": 177.2, "ever": 175.1}, {"date": "26.03.08", "avg": 187.0, "ever": 177.4}, {"date": "26.03.14", "avg": 185.5, "ever": 176.0}, {"date": "26.03.15", "avg": 181.2, "ever": 176.4}, {"date": "26.03.21", "avg": 174.4, "ever": 180.9}, {"date": "26.03.22", "avg": 156.8, "ever": 176.6}, {"date": "26.03.28", "avg": 170.5, "ever": 173.3}, {"date": "26.03.29", "avg": 188.8, "ever": 174.5}, {"date": "26.04.04", "avg": 171.8, "ever": 172.6}, {"date": "26.04.05", "avg": 186.4, "ever": 175.2}, {"date": "26.04.11", "avg": 156.0, "ever": 175.9}, {"date": "26.04.12", "avg": 158.8, "ever": 173.1}, {"date": "26.04.18", "avg": 172.8, "ever": 169.6}, {"date": "26.04.19", "avg": 186.0, "ever": 172.7}, {"date": "26.04.25", "avg": 166.8, "ever": 168.6}, {"date": "26.04.26", "avg": 166.6, "ever": 170.2}, {"date": "26.05.02", "avg": 150.8, "ever": 168.6}, {"date": "26.05.03", "avg": 164.8, "ever": 167.0}, {"date": "26.05.09", "avg": 169.8, "ever": 163.5}, {"date": "26.05.10", "avg": 164.6, "ever": 163.0}, {"date": "26.05.16", "avg": 167.4, "ever": 163.2}, {"date": "26.05.17", "avg": 175.6, "ever": 168.4}], "전진욱": [{"date": "26.01.03", "avg": 177.8, "ever": 178.7}, {"date": "26.01.04", "avg": 176.0, "ever": 175.9}, {"date": "26.01.10", "avg": 170.8, "ever": 172.3}, {"date": "26.01.11", "avg": 171.8, "ever": 174.3}, {"date": "26.01.17", "avg": 174.8, "ever": 174.4}, {"date": "26.01.18", "avg": 167.2, "ever": 172.2}, {"date": "26.01.24", "avg": 169.6, "ever": 170.8}, {"date": "26.01.25", "avg": 185.2, "ever": 173.7}, {"date": "26.02.08", "avg": 186.2, "ever": 176.2}, {"date": "26.02.14", "avg": 136.2, "ever": 169.6}, {"date": "26.02.21", "avg": 181.4, "ever": 172.7}, {"date": "26.02.22", "avg": 161.6, "ever": 170.9}, {"date": "26.03.02", "avg": 184.5, "ever": 171.3}, {"date": "26.03.07", "avg": 206.0, "ever": 175.9}, {"date": "26.03.08", "avg": 184.4, "ever": 183.6}, {"date": "26.03.14", "avg": 238.2, "ever": 192.8}, {"date": "26.03.15", "avg": 182.0, "ever": 196.9}, {"date": "26.03.17", "avg": 181.0, "ever": 196.7}, {"date": "26.03.21", "avg": 158.6, "ever": 186.8}, {"date": "26.03.22", "avg": 160.0, "ever": 181.7}, {"date": "26.03.28", "avg": 170.5, "ever": 170.4}, {"date": "26.03.29", "avg": 184.0, "ever": 170.8}, {"date": "26.04.04", "avg": 179.7, "ever": 170.9}, {"date": "26.04.05", "avg": 170.6, "ever": 173.3}, {"date": "26.04.11", "avg": 174.8, "ever": 176.3}, {"date": "26.04.12", "avg": 170.0, "ever": 176.0}, {"date": "26.04.18", "avg": 169.0, "ever": 173.0}, {"date": "26.04.19", "avg": 168.8, "ever": 170.5}, {"date": "26.04.25", "avg": 177.6, "ever": 171.9}, {"date": "26.04.26", "avg": 176.0, "ever": 172.3}, {"date": "26.05.02", "avg": 172.4, "ever": 172.8}, {"date": "26.05.03", "avg": 182.6, "ever": 175.5}, {"date": "26.05.05", "avg": 188.4, "ever": 179.4}, {"date": "26.05.09", "avg": 173.0, "ever": 178.7}, {"date": "26.05.10", "avg": 173.4, "ever": 178.2}, {"date": "26.05.16", "avg": 138.6, "ever": 171.1}, {"date": "26.05.17", "avg": 173.4, "ever": 169.2}], "이종형": [{"date": "26.01.03", "avg": 193.4, "ever": 173.0}, {"date": "26.01.10", "avg": 145.5, "ever": 172.9}, {"date": "26.01.18", "avg": 166.4, "ever": 172.7}, {"date": "26.01.31", "avg": 161.2, "ever": 171.0}, {"date": "26.02.01", "avg": 135.8, "ever": 162.2}, {"date": "26.02.08", "avg": 147.4, "ever": 152.2}, {"date": "26.02.14", "avg": 149.8, "ever": 152.9}, {"date": "26.02.21", "avg": 171.4, "ever": 154.0}, {"date": "26.02.28", "avg": 163.6, "ever": 154.5}, {"date": "26.03.07", "avg": 149.4, "ever": 156.6}, {"date": "26.03.08", "avg": 168.0, "ever": 160.6}, {"date": "26.03.14", "avg": 170.8, "ever": 164.2}, {"date": "26.03.22", "avg": 143.8, "ever": 158.2}, {"date": "26.04.04", "avg": 137.2, "ever": 153.2}, {"date": "26.04.11", "avg": 190.2, "ever": 161.1}, {"date": "26.04.12", "avg": 145.5, "ever": 156.9}, {"date": "26.04.25", "avg": 165.0, "ever": 156.2}, {"date": "26.05.03", "avg": 180.6, "ever": 164.5}, {"date": "26.05.09", "avg": 158.5, "ever": 168.4}, {"date": "26.05.10", "avg": 174.0, "ever": 164.6}, {"date": "26.05.17", "avg": 164.2, "ever": 168.1}]};
+const CHART_COLORS = {"박찬익": "#e05c5c", "김영민": "#4fc3a1", "김재응": "#38bdf8", "김애란": "#c084fc", "박춘호": "#f97316", "최진희": "#e8c94a", "김애경": "#f472b6", "전진욱": "#86efac", "이종형": "#94a3b8"};
+const HANULTARI_MEMBERS = ["박찬익", "김영민", "김재응", "김애란", "박춘호", "최진희", "김애경", "전진욱", "이종형"];
+
+let chartVisible = {};
+HANULTARI_MEMBERS.forEach(n => { chartVisible[n] = true; });
+
+function renderEverChart() {
+  const canvas = document.getElementById('ever-chart');
+  if (!canvas) return;
+
+  // 최근 20대회만
+  const allDatesAll = [...new Set(
+    HANULTARI_MEMBERS.flatMap(n => CHART_DATA[n].map(p => p.date))
+  )].sort();
+  const allDates = allDatesAll.slice(-20);
+
+  const W = Math.max(allDates.length * 18, 600);
+  const H = 380;
+  const PAD = {top:30, right:20, bottom:60, left:50};
+  canvas.width = W;
+  canvas.height = H;
+
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fillRect(0, 0, W, H);
+
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top - PAD.bottom;
+
+  // Y축 범위
+  let minY = 999, maxY = 0;
+  HANULTARI_MEMBERS.forEach(n => {
+    CHART_DATA[n].forEach(p => {
+      if (p.ever) { minY = Math.min(minY, p.ever); maxY = Math.max(maxY, p.ever); }
+      if (p.avg)  { minY = Math.min(minY, p.avg);  maxY = Math.max(maxY, p.avg); }
+    });
+  });
+  minY = Math.floor(minY/10)*10 - 10;
+  maxY = Math.ceil(maxY/10)*10 + 10;
+
+  const xScale = i => PAD.left + (i / (allDates.length-1)) * cW;
+  const yScale = v => PAD.top + cH - ((v - minY) / (maxY - minY)) * cH;
+
+  // 격자
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  for (let y = minY; y <= maxY; y += 10) {
+    const yp = yScale(y);
+    ctx.beginPath(); ctx.moveTo(PAD.left, yp); ctx.lineTo(PAD.left+cW, yp); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '10px Arial';
+    ctx.fillText(y, PAD.left-28, yp+4);
+  }
+
+  // X축 날짜 (5개마다)
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = '9px Arial';
+  allDates.forEach((d, i) => {
+    if (i % 5 === 0) {
+      ctx.save();
+      ctx.translate(xScale(i), H - PAD.bottom + 8);
+      ctx.rotate(-Math.PI/4);
+      ctx.fillText("'" + d.slice(2), 0, 0);
+      ctx.restore();
+    }
+  });
+
+  // 선수별 그래프
+  HANULTARI_MEMBERS.forEach(name => {
+    if (!chartVisible[name]) return;
+    const col = CHART_COLORS[name];
+    const points = CHART_DATA[name];
+    const dateMap = {};
+    points.forEach(p => { dateMap[p.date] = p; });
+
+    // 에버 추이선
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    let started = false;
+    allDates.forEach((d, i) => {
+      const p = dateMap[d];
+      if (p && p.ever) {
+        const x = xScale(i), y = yScale(p.ever);
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      }
+    });
+    ctx.stroke();
+
+    // 대회 평균 점
+    allDates.forEach((d, i) => {
+      const p = dateMap[d];
+      if (p && p.avg) {
+        const x = xScale(i), y = yScale(p.avg);
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI*2);
+        ctx.fillStyle = col;
+        ctx.fill();
+      }
+    });
+  });
+
+  // 범례
+  const legend = document.getElementById('chart-legend');
+  if (legend) {
+    legend.innerHTML = HANULTARI_MEMBERS.map(n => `
+      <div onclick="toggleChartMember('${n}')" style="
+        display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:16px;
+        cursor:pointer;font-size:12px;font-weight:500;
+        background:${chartVisible[n]?'rgba(255,255,255,.1)':'rgba(255,255,255,.03)'};
+        border:1px solid ${chartVisible[n]?CHART_COLORS[n]:'rgba(255,255,255,.1)'};
+        color:${chartVisible[n]?CHART_COLORS[n]:'rgba(255,255,255,.3)'};
+        transition:all .2s;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${chartVisible[n]?CHART_COLORS[n]:'rgba(255,255,255,.2)'}"></span>
+        ${n}
+      </div>`).join('');
+  }
+}
+
+function toggleChartMember(name) {
+  chartVisible[name] = !chartVisible[name];
+  renderEverChart();
+}
+
+function exportChartImg() {
+  const canvas = document.getElementById('ever-chart');
+  if (!canvas) return;
+  const dataUrl = canvas.toDataURL('image/png');
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow:auto;';
+  overlay.innerHTML = `
+    <div style="color:#fff;font-size:13px;margin-bottom:12px;">📱 이미지를 <strong>길게 눌러서</strong> 저장하세요</div>
+    <img src="${dataUrl}" style="max-width:100%;border-radius:8px;">
+    <button onclick="this.parentNode.remove()" style="margin-top:16px;padding:10px 24px;background:#e8c94a;color:#000;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">닫기</button>
+  `;
+  document.body.appendChild(overlay);
+}
+
 </script>
 </body>
 </html>
