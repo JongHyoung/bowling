@@ -195,7 +195,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v2.3.7</span></h1>
+    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v3.0</span></h1>
     <div class="sub">한울타리 볼링 모임 · 에버 기준 순위</div>
   </div>
 </header>
@@ -207,6 +207,7 @@
     <div class="tab" onclick="showTab('scores')">② 점수 입력</div>
   <div class="tab" onclick="showTab('summary')" style="font-size:14px;">📊 점수표</div>
   <div class="tab" onclick="showTab('ranking')" style="font-size:14px;">💰 정산표</div>
+  <div class="tab" onclick="showTab('match-input')">📝 대회입력</div>
   <div class="tab" onclick="showTab('history')">📁 기록</div>
 </div>
 
@@ -311,9 +312,6 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
       <div class="card-title" style="margin:0;">📈 에버계산표</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-        <input type="text" id="ec-new-date" placeholder="날짜 예: 26.04.19"
-          style="width:128px;padding:6px 10px;font-size:12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);">
-        <button class="btn btn-primary btn-sm" onclick="ecAddDate()">+ 대회 추가</button>
         <button class="btn btn-ghost btn-sm" onclick="renderEvChart()">🔄 새로고침</button>
         <button class="btn btn-ghost btn-sm" onclick="exportEvChart()">📷 이미지 저장</button>
       </div>
@@ -344,6 +342,22 @@
 
 <!-- 📁 기록 -->
 
+
+
+<div class="page" id="page-match-input">
+  <div class="card">
+    <div class="card-title">📝 대회 입력</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+      <input type="text" id="mi-date" placeholder="날짜 예: 26.05.30"
+        style="width:140px;padding:8px 10px;font-size:14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);">
+      <button class="btn btn-primary" onclick="saveMatchInput()">💾 저장 → 에버계산표 반영</button>
+      <button class="btn btn-ghost btn-sm" onclick="renderMatchInput()">🔄 새로고침</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="mi-table" style="border-collapse:collapse;width:100%;font-size:14px;"></table>
+    </div>
+  </div>
+</div>
 
 <div class="page" id="page-history">
   <div class="card">
@@ -613,15 +627,19 @@ function showRestoreBanner() {
 
 // ─── TABS ─────────────────────────────────────────────────────
 function showTab(n) {
-  ['evchart','everdb','setup','scores','summary','ranking','history'].forEach((x,i)=>{
-    document.querySelectorAll('.tab')[i].classList.toggle('active',x===n);
-    document.getElementById('page-'+x).classList.toggle('active',x===n);
+  const tabEls = document.querySelectorAll('.tab[onclick]');
+  ['evchart','everdb','setup','scores','summary','ranking','match-input','history'].forEach((x,i)=>{
+    const tabEl = tabEls[i];
+    const pageEl = document.getElementById('page-'+x);
+    if (tabEl) tabEl.classList.toggle('active',x===n);
+    if (pageEl) pageEl.classList.toggle('active',x===n);
   });
   if (n==='scores') renderScorePage();
   if (n==='everdb') { renderEverTable(); renderEvChartSelect(); }
   if (n==='history') renderHistoryList();
   if (n==='summary') renderSummary();
   if (n==='evchart') renderEvChart();
+  if (n==='match-input') renderMatchInput();
 }
 
 // ─── SETUP ────────────────────────────────────────────────────
@@ -3527,6 +3545,93 @@ function exportChartImg() {
     <button onclick="this.parentNode.remove()" style="margin-top:16px;padding:10px 24px;background:#e8c94a;color:#000;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">닫기</button>
   `;
   document.body.appendChild(overlay);
+}
+
+
+// ─── 대회입력 ──────────────────────────────────────────
+function renderMatchInput() {
+  const activeSet = typeof getActiveSet === 'function' ? getActiveSet() : new Set();
+  const members = Object.entries(EVER_DB)
+    .map(([k,v]) => ({firstName:k, ...v}))
+    .filter(p => activeSet.has(p.fullName) || (!p.rare && activeSet.has(p.fullName)))
+    .filter(p => !p.rare || activeSet.has(p.fullName))
+    .sort((a,b) => { if(a.club!==b.club) return a.club==='한울타리'?-1:1; return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)); });
+
+  const games = 5;
+  const table = document.getElementById('mi-table');
+  if (!table) return;
+
+  // 헤더
+  let html = `<thead><tr>
+    <th style="padding:8px 10px;background:var(--surface2);border:1px solid var(--border);text-align:left;position:sticky;left:0;z-index:2;min-width:80px;">이름</th>`;
+  for (let g=1; g<=games; g++) {
+    html += `<th style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);text-align:center;color:var(--accent);min-width:70px;">G${g}</th>`;
+  }
+  html += `</tr></thead><tbody>`;
+
+  members.forEach(p => {
+    const clubCol = p.club==='한울타리'?'var(--green)':'var(--purple, #b39ddb)';
+    html += `<tr>
+      <td style="padding:6px 10px;border:1px solid var(--border);background:var(--surface);position:sticky;left:0;z-index:1;">
+        <div style="font-size:15px;font-weight:600;color:${clubCol};">${p.fullName}</div>
+        <div style="font-size:11px;color:var(--muted);">E${p.ever}</div>
+      </td>`;
+    for (let g=1; g<=games; g++) {
+      html += `<td style="padding:4px 6px;border:1px solid var(--border);text-align:center;">
+        <input type="number" id="mi-${p.firstName}-g${g}" min="0" max="300" placeholder="—"
+          style="width:60px;text-align:center;font-size:16px;padding:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);"
+          oninput="if(+this.value>300)this.value=300;">
+      </td>`;
+    }
+    html += `</tr>`;
+  });
+  html += `</tbody>`;
+  table.innerHTML = html;
+
+  // 날짜 오늘 기본값
+  const today = new Date();
+  const yy = String(today.getFullYear()).slice(2);
+  const mm = String(today.getMonth()+1).padStart(2,'0');
+  const dd = String(today.getDate()).padStart(2,'0');
+  const dateInput = document.getElementById('mi-date');
+  if (dateInput && !dateInput.value) dateInput.value = `${yy}.${mm}.${dd}`;
+}
+
+function saveMatchInput() {
+  const date = document.getElementById('mi-date').value.trim();
+  if (!date) { mAlert('날짜를 입력해주세요'); return; }
+
+  const activeSet = typeof getActiveSet === 'function' ? getActiveSet() : new Set();
+  const members = Object.entries(EVER_DB)
+    .map(([k,v]) => ({firstName:k, ...v}))
+    .filter(p => !p.rare || activeSet.has(p.fullName));
+
+  const scores = {};
+  members.forEach(p => {
+    const gameScores = [];
+    let hasAny = false;
+    for (let g=1; g<=5; g++) {
+      const inp = document.getElementById(`mi-${p.firstName}-g${g}`);
+      const val = inp ? inp.value.trim() : '';
+      if (val && +val > 0) { gameScores.push(+val); hasAny = true; }
+      else gameScores.push(null);
+    }
+    if (hasAny) scores[p.fullName] = gameScores;
+  });
+
+  if (Object.keys(scores).length === 0) { mAlert('입력된 점수가 없습니다'); return; }
+
+  // localStorage에 저장
+  const hist = getScoreHistory();
+  Object.entries(scores).forEach(([name, sc]) => {
+    if (!hist[name]) hist[name] = {};
+    hist[name][date] = sc;
+  });
+  setScoreHistory(hist);
+
+  mAlert(`✅ ${date} 대회 저장 완료! (${Object.keys(scores).length}명)\n에버계산표에서 확인하세요.`, () => {
+    showTab('evchart');
+  });
 }
 
 </script>
