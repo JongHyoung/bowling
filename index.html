@@ -195,7 +195,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v3.0.8</span></h1>
+    <h1>BOWLING RANK <span style="font-size:12px;font-weight:400;color:var(--muted);vertical-align:middle;">v3.1.6</span></h1>
     <div class="sub">한울타리 볼링 모임 · 에버 기준 순위</div>
   </div>
 </header>
@@ -207,8 +207,8 @@
     <div class="tab" onclick="showTab('scores')">② 점수 입력</div>
   <div class="tab" onclick="showTab('summary')" style="font-size:14px;">📊 점수표</div>
   <div class="tab" onclick="showTab('ranking')" style="font-size:14px;">💰 정산표</div>
-  <div class="tab" onclick="showTab('match-input')">📝 대회입력</div>
   <div class="tab" onclick="showTab('history')">📁 기록</div>
+  <div class="tab" onclick="showTab('match-input')">📝 대회입력</div>
 </div>
 
 <!-- ① 기본 설정 -->
@@ -348,7 +348,7 @@
   <div class="card">
     <div class="card-title">📝 대회 입력</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
-      <input type="text" id="mi-date" placeholder="날짜 예: 26.05.30"
+      <input type="text" id="mi-date" placeholder="날짜 입력 예: 26.05.30"
         style="width:140px;padding:8px 10px;font-size:14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);">
       <button class="btn btn-primary" onclick="saveMatchInput()">💾 저장 → 에버계산표 반영</button>
       <button class="btn btn-ghost btn-sm" onclick="renderMatchInput()">🔄 새로고침</button>
@@ -589,7 +589,14 @@ function init() {
 
   // UI 필드에 복원값 반영
   document.getElementById('t-name').value    = S.name;
-  document.getElementById('t-date').value    = S.date;
+  if (!S.date) {
+    const _t = new Date();
+    const _yy = String(_t.getFullYear()).slice(2);
+    const _mm = String(_t.getMonth()+1).padStart(2,'0');
+    const _dd = String(_t.getDate()).padStart(2,'0');
+    S.date = `${_yy}.${_mm}.${_dd}`;
+  }
+  document.getElementById('t-date').value = S.date;
   document.getElementById('t-games').value   = S.games;
   document.getElementById('t-winners').value = S.winners;
   document.getElementById('t-fee').value     = S.fee;
@@ -628,7 +635,7 @@ function showRestoreBanner() {
 
 // ─── TABS ─────────────────────────────────────────────────────
 function showTab(n) {
-  ['evchart','everdb','setup','scores','summary','ranking','match-input','history'].forEach(x=>{
+  ['evchart','everdb','setup','scores','summary','ranking','history','match-input'].forEach(x=>{
     const pageEl = document.getElementById('page-'+x);
     if (pageEl) pageEl.classList.toggle('active', x===n);
   });
@@ -672,6 +679,15 @@ function resetTournament() {
     renderCfgBar();
     mAlert('초기화 완료!');
   });
+}
+
+function calcAutoWinners() {
+  // 참가 인원의 1/3 (소수점 버림)
+  const cnt = S.players.filter(p => {
+    const gs = getGameSetting(S.activeGame||0);
+    return !gs.excluded.includes(p.id);
+  }).length || S.players.length;
+  return Math.floor(cnt / 3);
 }
 
 function applySetup() {
@@ -1063,10 +1079,18 @@ function switchGame(g) {
         });
       }
     }
-    // winners 재조정
+    // winners 재조정 - 참가인원의 1/3 기준
     const n = S.players.filter(p => !gs.excluded.includes(p.id)).length;
+    const autoW = n ? Math.max(1, Math.floor(n / 3)) : 1;
     const maxWL = Math.floor(n / 2);
-    if (gs.winners > maxWL) { gs.winners = maxWL; gs.losers = maxWL; }
+    // 아직 수동으로 바꾼 적 없으면 자동 계산값 적용
+    if (!gs._manualSet) {
+      gs.winners = Math.min(autoW, maxWL);
+      gs.losers  = Math.min(autoW, maxWL);
+    } else if (gs.winners > maxWL) {
+      gs.winners = maxWL;
+      gs.losers  = maxWL;
+    }
   }
 
   renderGTabs();
@@ -1092,11 +1116,15 @@ function saveCurrentGame() {
 
 function getGameSetting(g) {
   if (!S.gameSettings[g]) {
+    // 이전 게임 excluded 복사
+    const prevExcluded = g > 0 && S.gameSettings[g-1] ? (S.gameSettings[g-1].excluded||[]).slice() : [];
+    const activeCnt = S.players.filter(p => !prevExcluded.includes(p.id)).length;
+    const cnt = activeCnt > 0 ? activeCnt : S.players.length;
+    const w = cnt ? Math.max(1, Math.floor(cnt / 3)) : S.winners;
     S.gameSettings[g] = {
-      winners: S.winners,
-      losers:  S.winners,
-      // 기본: 전원 참가
-      excluded: []  // 제외된 pid 목록
+      winners: w,
+      losers:  w,
+      excluded: prevExcluded
     };
   }
   return S.gameSettings[g];
@@ -2491,6 +2519,16 @@ function renderEverTable() {
     .map(([k,v])=>({firstName:k,...v}))
     .filter(p => sel.has(p.fullName));
 
+  // 참가자 인원수 기준 1등/꼴찌 자동 반영
+  const selCnt = all.length;
+  if (selCnt > 0) {
+    const autoW = Math.max(1, Math.floor(selCnt / 3));
+    S.winners = autoW;
+    S.losers  = autoW;
+    const wEl = document.getElementById('t-winners');
+    if (wEl) wEl.value = autoW;
+  }
+
   // 동호회 순서: 한울타리 → 매니아 → 미분류
   const clubOrder = ['한울타리', '매니아'];
   if (all.some(p=>!p.club)) clubOrder.push('');
@@ -3561,11 +3599,20 @@ let miExcluded = new Set();
 function renderMatchInput() {
   const activeSet = typeof getActiveSet === 'function' ? getActiveSet() : new Set();
   // EVER_DB 전원, 에버계산표 기준 에버 내림차순
+  // 칩용: 한울타리정기→한울타리비정기→매니아정기→매니아비정기, 각 에버순
   const allMembers = Object.entries(EVER_DB)
     .map(([k,v]) => ({firstName:k, ...v}))
-    .sort((a,b) => (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)));
+    .sort((a,b) => {
+      const aGroup = a.club==='한울타리' ? (a.rare?1:0) : (a.rare?3:2);
+      const bGroup = b.club==='한울타리' ? (b.rare?1:0) : (b.rare?3:2);
+      if (aGroup !== bGroup) return aGroup - bGroup;
+      return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever));
+    });
 
-  const members = allMembers.filter(p => !miExcluded.has(p.fullName));
+  // 테이블용: 에버 내림차순 (동호회 무관)
+  const members = allMembers
+    .filter(p => !miExcluded.has(p.fullName))
+    .sort((a,b) => (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)));
   const games = 5;
   const table = document.getElementById('mi-table');
   if (!table) return;
@@ -3613,13 +3660,9 @@ function renderMatchInput() {
   html += `</tbody>`;
   table.innerHTML = html;
 
-  // 날짜 오늘 기본값
-  const today = new Date();
-  const yy = String(today.getFullYear()).slice(2);
-  const mm = String(today.getMonth()+1).padStart(2,'0');
-  const dd = String(today.getDate()).padStart(2,'0');
+  // 날짜 입력칸은 비워두기 (사용자가 직접 입력)
   const dateInput = document.getElementById('mi-date');
-  if (dateInput && !dateInput.value) dateInput.value = `${yy}.${mm}.${dd}`;
+  if (dateInput && !dateInput.value) dateInput.value = '';
 }
 
 function toggleMiExcluded(fullName) {
@@ -3652,15 +3695,23 @@ function saveMatchInput() {
 
   if (Object.keys(scores).length === 0) { mAlert('입력된 점수가 없습니다'); return; }
 
-  // localStorage에 저장
+  // localStorage에 저장 - 중복 날짜 처리 (a, b, c 순번)
   const hist = getScoreHistory();
+  // 이미 해당 날짜가 있으면 순번 부여
+  const suffixes = ['', 'a', 'b', 'c', 'd', 'e'];
+  let finalDate = date;
+  for (const suf of suffixes) {
+    const testDate = date + suf;
+    const exists = Object.values(hist).some(dm => dm[testDate]);
+    if (!exists) { finalDate = testDate; break; }
+  }
   Object.entries(scores).forEach(([name, sc]) => {
     if (!hist[name]) hist[name] = {};
-    hist[name][date] = sc;
+    hist[name][finalDate] = sc;
   });
   setScoreHistory(hist);
 
-  mAlert(`✅ ${date} 대회 저장 완료! (${Object.keys(scores).length}명)\n에버계산표에서 확인하세요.`, () => {
+  mAlert(`✅ ${finalDate} 대회 저장 완료! (${Object.keys(scores).length}명)\n에버계산표에서 확인하세요.`, () => {
     showTab('evchart');
   });
 }
