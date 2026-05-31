@@ -195,7 +195,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v3.15</span></h1>
+    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v3.16</span></h1>
     <div class="sub">한울타리 볼링 모임 · 에버 기준 순위</div>
   </div>
 </header>
@@ -648,7 +648,7 @@ function showTab(n) {
   if (n==='everdb') { renderEverTable(); renderEvChartSelect(); }
   if (n==='history') renderHistoryList();
   if (n==='summary') renderSummary();
-  if (n==='evchart') renderEvChart();
+  if (n==='evchart') { refreshEverFromHistory(); renderEvChart(); }
   if (n==='match-input') renderMatchInput();
 }
 
