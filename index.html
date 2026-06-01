@@ -195,7 +195,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v4.0</span></h1>
+    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v4.2</span></h1>
     <div class="sub">한울타리 볼링 모임 · 에버 기준 순위</div>
   </div>
 </header>
@@ -1071,10 +1071,12 @@ function switchGame(g) {
         });
       }
     }
-    // winners 재조정
+    // winners 재조정: 점수 미입력 게임은 참가자수/3 자동계산, 초과 방지
     const n = S.players.filter(p => !gs.excluded.includes(p.id)).length;
-    const maxWL = Math.floor(n / 2);
-    if (gs.winners > maxWL) { gs.winners = maxWL; gs.losers = maxWL; }
+    const autoW = Math.max(1, Math.floor(n / 3));
+    const maxWL = Math.max(0, Math.floor(n / 2));
+    if (!hasScores) { gs.winners = Math.min(autoW, maxWL); gs.losers = gs.winners; }
+    else if (gs.winners + gs.losers > n) { gs.winners = Math.min(gs.winners, maxWL); gs.losers = gs.winners; }
   }
 
   renderGTabs();
@@ -1101,9 +1103,14 @@ function saveCurrentGame() {
 function getGameSetting(g) {
   if (!S.gameSettings[g]) {
     const prevExcluded = g > 0 && S.gameSettings[g-1] ? (S.gameSettings[g-1].excluded||[]).slice() : [];
-    const activeCnt = S.players.filter(p => !prevExcluded.includes(p.id)).length;
-    const cnt = activeCnt > 0 ? activeCnt : S.players.length;
-    const w = cnt ? Math.max(1, Math.floor(cnt / 3)) : S.winners;
+    // 이전 게임 수동 설정값 상속, 없으면 참가자수/3 자동계산
+    let w;
+    if (g > 0 && S.gameSettings[g-1]) {
+      w = S.gameSettings[g-1].winners;
+    } else {
+      const activeCnt = S.players.filter(p => !prevExcluded.includes(p.id)).length || S.players.length;
+      w = Math.max(1, Math.floor(activeCnt / 3));
+    }
     S.gameSettings[g] = {
       winners: w,
       losers:  w,
@@ -1136,13 +1143,12 @@ function toggleParticipant(g, pid) {
   const idx = gs.excluded.indexOf(pidNum);
   if (idx >= 0) gs.excluded.splice(idx, 1);
   else gs.excluded.push(pidNum);
-  // 참가자 수 변경 후 winners 최댓값 재조정
+  // 참가자 수 변경 후 winners 자동 재계산 (참가자수/3)
   const n = S.players.filter(p => !gs.excluded.includes(p.id) && !gs.excluded.includes(+p.id)).length;
+  const autoW = Math.max(1, Math.floor(n / 3));
   const maxWL = Math.floor(n / 2);
-  if (gs.winners > maxWL) {
-    gs.winners = maxWL;
-    gs.losers  = maxWL;
-  }
+  gs.winners = Math.min(autoW, maxWL);
+  gs.losers  = gs.winners;
   autoSave();
   renderGameTable(g);
 }
