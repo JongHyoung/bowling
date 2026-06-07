@@ -197,7 +197,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v4.6</span></h1>
+    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v4.5</span></h1>
     <div class="sub">한울타리 천하제일볼링대회 · 에버 기준 순위</div>
   </div>
 </header>
@@ -2840,7 +2840,7 @@ function setScoreHistory(hist) {
 }
 
 // 초기 이력 로드 (처음 한 번만)
-const HISTORY_VERSION = '20260607u'; // 데이터 버전 — 변경 시 강제 덮어쓰기
+const HISTORY_VERSION = '20260607x'; // 데이터 버전 — 변경 시 강제 덮어쓰기
 
 function initHistoryIfEmpty() {
   // INIT_HISTORY를 직접 메모리에 로드 (딥카피 최소화로 속도 개선)
@@ -2857,11 +2857,11 @@ function initHistoryIfEmpty() {
       for (const name in base) {
         merged[name] = Object.assign({}, base[name]);
       }
-      // 사용자 추가분 병합
+      // 사용자 추가분 병합 (localStorage가 INIT_HISTORY보다 우선)
       for (const name in stored) {
         if (!merged[name]) merged[name] = {};
         for (const date in stored[name]) {
-          if (!merged[name][date]) merged[name][date] = stored[name][date];
+          merged[name][date] = stored[name][date];
         }
       }
       _scoreHistoryCache = merged;
@@ -2933,7 +2933,19 @@ function saveRecord() {
   if (!rd) { mAlert('순위 계산에 실패했습니다.'); return; }
 
   const {players, gameRanks, roleMap, feeEach, feeCumul, feePerGame, gc} = rd;
-  const dateKey = S.date || new Date().toISOString().slice(2,10).replace(/-/g,'.');
+  const _rawDate = S.date || new Date().toISOString().slice(2,10).replace(/-/g,'.');
+  // INIT_HISTORY + localStorage 모두 포함해서 날짜 중복 체크
+  const _histForCheck = getScoreHistory();
+  const _suffixes = ['', 'a', 'b', 'c', 'd', 'e'];
+  let dateKey = _rawDate;
+  for (const suf of _suffixes) {
+    const testDate = _rawDate + suf;
+    // INIT_HISTORY에서 체크
+    const inInit = Object.values(INIT_HISTORY).some(dm => dm[testDate] !== undefined);
+    // localStorage에서 체크
+    const inLocal = Object.values(_histForCheck).some(dm => dm[testDate] !== undefined);
+    if (!inInit && !inLocal) { dateKey = testDate; break; }
+  }
 
   // 3. 저장 확인
   mConfirm(
