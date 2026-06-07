@@ -197,7 +197,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v4.5</span></h1>
+    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v4.6</span></h1>
     <div class="sub">한울타리 천하제일볼링대회 · 에버 기준 순위</div>
   </div>
 </header>
@@ -226,7 +226,13 @@
       <div><label>게임당 비용 (원)</label><input type="number" id="t-fee" min="0" value="3000"></div>
       <div>
         <label>🥇 1등 · 💀 꼴찌 인원 (기본값)</label>
-        <input type="number" id="t-winners" min="0" max="20" value="3">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" id="t-winners" min="0" max="20" value="3" style="flex:1;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);white-space:nowrap;cursor:pointer;">
+            <input type="checkbox" id="t-winners-auto" checked onchange="toggleWinnersAuto()" style="accent-color:var(--accent);">
+            자동(참가인원/3)
+          </label>
+        </div>
       </div>
     </div>
     <div class="alert alert-info">
@@ -520,7 +526,7 @@ const INIT_HISTORY = {"권수환":{"25.10.10":[166,149,144,222,168],"25.10.11":[
 // ─── STATE ───────────────────────────────────────────────────
 const S = {
   name:'한울타리 천하제일볼링대회', date:'', games:5,
-  winners:3, losers:3, fee:3000,
+  winners:3, losers:3, fee:3000, autoWL:true,
   players:[], scores:{}, activeGame:0,
   initializedGames:new Set(),
   gameSettings:{}, // g → {winners, losers, excluded:[pid,...]}
@@ -541,7 +547,7 @@ function autoSave() {
     const data = JSON.stringify({
       S: {
         name: S.name, date: S.date, games: S.games,
-        winners: S.winners, losers: S.losers, fee: S.fee,
+        winners: S.winners, losers: S.losers, fee: S.fee, autoWL: S.autoWL,
         teams: [], players: S.players, scores: S.scores,
         activeGame: S.activeGame, gameSettings: S.gameSettings,
         mealBet: S.mealBet
@@ -564,6 +570,7 @@ function autoRestore() {
     S.games      = ds.games   || 5;
     S.winners    = ds.winners || 3;
     S.losers     = ds.losers  || 3;
+    S.autoWL     = ds.autoWL !== undefined ? ds.autoWL : true;
     S.fee        = ds.fee     || 3000;
     S.teams      = [];
     S.players    = ds.players || [];
@@ -607,6 +614,7 @@ function init() {
   document.getElementById('t-date').value = S.date;
   document.getElementById('t-games').value   = S.games;
   document.getElementById('t-winners').value = S.winners;
+  if (document.getElementById('t-winners-auto')) toggleWinnersAuto();
   document.getElementById('t-fee').value     = S.fee;
 
   try { initHistoryIfEmpty(); } catch(e) { console.warn('initHistory err', e); }
@@ -689,12 +697,32 @@ function resetTournament() {
   });
 }
 
+function toggleWinnersAuto() {
+  const auto = document.getElementById('t-winners-auto').checked;
+  S.autoWL = auto;
+  const inp = document.getElementById('t-winners');
+  if (auto) {
+    inp.disabled = true;
+    inp.style.opacity = '0.4';
+    const cnt = S.players.length || 0;
+    inp.value = Math.max(1, Math.floor(cnt / 3));
+  } else {
+    inp.disabled = false;
+    inp.style.opacity = '1';
+  }
+}
+
 function applySetup() {
   S.name    = document.getElementById('t-name').value.trim()||'볼링대회';
   S.date    = document.getElementById('t-date').value.trim();
   S.games   = Math.max(1,Math.min(10,+document.getElementById('t-games').value||5));
-  S.winners = Math.max(0,+document.getElementById('t-winners').value||3);
-  S.losers  = S.winners;
+  const autoW = S.autoWL !== false;
+  if (autoW) {
+    S.winners = Math.max(1, Math.floor(S.players.length / 3)) || 3;
+  } else {
+    S.winners = Math.max(0, +document.getElementById('t-winners').value || 3);
+  }
+  S.losers = S.winners;
   S.fee     = +document.getElementById('t-fee').value||0;
   S.teams   = [];
   reinitScores();
@@ -1159,12 +1187,18 @@ function toggleParticipant(g, pid) {
   const idx = gs.excluded.indexOf(pidNum);
   if (idx >= 0) gs.excluded.splice(idx, 1);
   else gs.excluded.push(pidNum);
-  // 참가자 수 변경 후 winners 자동 재계산 (참가자수/3)
+  // 참가자 수 변경 후 winners 자동 재계산 (자동 체크박스 ON일 때만)
   const n = S.players.filter(p => !gs.excluded.includes(p.id) && !gs.excluded.includes(+p.id)).length;
-  const autoW = Math.max(1, Math.floor(n / 3));
   const maxWL = Math.floor(n / 2);
-  gs.winners = Math.min(autoW, maxWL);
-  gs.losers  = gs.winners;
+  const isAutoW = S.autoWL !== false;
+  if (isAutoW) {
+    const autoW = Math.max(1, Math.floor(n / 3));
+    gs.winners = Math.min(autoW, maxWL);
+    gs.losers  = gs.winners;
+  } else {
+    gs.winners = Math.min(gs.winners, maxWL);
+    gs.losers  = gs.winners;
+  }
   autoSave();
   renderGameTable(g);
 }
@@ -1190,12 +1224,16 @@ function renderGameTable(g) {
   <div class="card fade-in">
     <div class="card-title">🎳 G${g+1} 설정</div>
     <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
-      <div style="display:flex;align-items:center;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span style="font-size:12px;color:var(--muted);">🥇/💀 인원:</span>
-        <button onclick="adjWL(${g},-1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;">−</button>
+        <button id="btn-wl-minus-${g}" onclick="adjWL(${g},-1)" ${S.autoWL!==false?'disabled style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:6px;font-size:16px;cursor:not-allowed;line-height:1;opacity:0.4;"':'style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;"'}>−</button>
         <span id="wl-count-${g}" style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:22px;color:var(--accent);min-width:24px;text-align:center;">${gs.winners}</span>
-        <button onclick="adjWL(${g},+1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;">+</button>
+        <button id="btn-wl-plus-${g}" onclick="adjWL(${g},+1)" ${S.autoWL!==false?'disabled style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:6px;font-size:16px;cursor:not-allowed;line-height:1;opacity:0.4;"':'style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;"'}>+</button>
         <span style="font-size:11px;color:var(--muted);">명</span>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;">
+          <input type="checkbox" id="auto-wl-${g}" ${S.autoWL!==false?'checked':''} onchange="toggleGameAutoWL(${g})" style="accent-color:var(--accent);">
+          자동
+        </label>
       </div>
       <div style="font-size:12px;color:var(--muted);">참가: <strong style="color:var(--text)">${activePlayers.length}명</strong> / 전체 ${allPlayers.length}명</div>
     </div>
@@ -1251,6 +1289,21 @@ function renderGameTable(g) {
     const cur = S.scores[p.id] ? S.scores[p.id][g] : null;
     if (cur!==null && cur!==undefined) showDiff(p.id, p.ever, cur);
   });
+}
+
+function toggleGameAutoWL(g) {
+  const cb = document.getElementById('auto-wl-'+g);
+  S.autoWL = cb.checked;
+  if (S.autoWL) {
+    // 자동: 현재 참가인원/3으로 즉시 계산
+    const gs = getGameSetting(g);
+    const n = S.players.filter(p => !gs.excluded.includes(p.id)).length;
+    const maxWL = Math.floor(n/2);
+    gs.winners = Math.min(Math.max(1, Math.floor(n/3)), maxWL);
+    gs.losers = gs.winners;
+    autoSave();
+  }
+  renderGameTable(g);
 }
 
 function adjWL(g, delta) {
@@ -1601,7 +1654,7 @@ function renderRanking(players, gameRanks, roleMap, feeEach, feeCumul, feePerGam
         : `<td style="text-align:center;color:var(--muted);">${(feeEach[p.id][g]||0).toLocaleString()}원</td>`;
       html += `<tr class="${isW?'r1':isL?'loser':'rother'}">
         <td><span class="rbadge">${i+1}</span></td>
-        <td><strong style="font-size:18px;">${p.fullName}${isL && p.fullName === '김애란' ? ' 🍀 <span style="font-size:11px;color:var(--green);font-weight:400;">굿럭</span>' : isL && p.fullName === '김애경' ? ' <span style="font-size:11px;color:#7dd3fc;font-weight:400;">비밀도구를 꺼내자!! 🎒</span>' : ''}</strong></td>
+        <td><strong style="font-size:18px;">${p.fullName}${isL && p.fullName === '김애란' ? ' 🍀 <span style="font-size:11px;color:var(--green);font-weight:400;">굿럭</span>' : isL && p.fullName === '김애경' ? ' <span style="font-size:9px;color:#7dd3fc;font-weight:400;">비밀도구를 꺼내자!! 🎒</span>' : ''}</strong></td>
         <td style="color:var(--green);font-weight:700;font-size:16px;">${p.ever}</td>
         <td style="font-weight:700;font-size:18px;">${p.vals[g].raw??'—'}</td>
         <td><span class="${dcls}">${d!==null?(d>0?'+':'')+d:'—'}</span></td>
@@ -2196,7 +2249,7 @@ function renderEvChart() {
                 <input type="checkbox" ${checked?'checked':''} onchange="toggleEvChartExtra('${p.fullName}')"
                   style="width:13px;height:13px;accent-color:var(--accent);">
                 <span style="color:var(--text);">${p.fullName}</span>
-                <span style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:13px;color:var(--green);">${p.ever}</span>
+                <span style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:13px;color:var(--green);">${(p.full && EVER_DB[p.full.slice(1)] ? EVER_DB[p.full.slice(1)].ever : p.ever)}</span>
               </label>`;
             }).join('')}
           </div>
@@ -2442,7 +2495,10 @@ function renderEvChartSelect() {
   const sel = getEvChartSelected();
   const all = EVER_DB_RAW.sort((a,b)=>{
     if(a.club!==b.club) return a.club==='한울타리'?-1:1;
-    return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever));
+    if(a.rare!==b.rare) return a.rare?1:-1; // 정기 먼저
+    const ae = (a.full && EVER_DB[a.full.slice(1)] ? EVER_DB[a.full.slice(1)].ever : a.ever);
+    const be = (b.full && EVER_DB[b.full.slice(1)] ? EVER_DB[b.full.slice(1)].ever : b.ever);
+    return be - ae;
   });
 
   const clubs = ['한울타리', '매니아'];
@@ -2467,7 +2523,7 @@ function renderEvChartSelect() {
               onchange="onEvSelChange()"
               style="width:14px;height:14px;accent-color:var(--accent);">
             <span>${p.full}</span>
-            <span style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:13px;color:var(--green);">${p.ever}</span>
+            <span style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-weight:700;letter-spacing:0.5px;font-size:13px;color:var(--green);">${(p.full && EVER_DB[p.full.slice(1)] ? EVER_DB[p.full.slice(1)].ever : p.ever)}</span>
             ${p.rare?'<span style="font-size:9px;color:var(--muted);">(비정기)</span>':''}
           </label>`;
         }).join('')}
@@ -2588,7 +2644,12 @@ function renderEverTable() {
   let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">에버 숫자 클릭 → 수정 · 하단에서 표시 인원 선택 가능</div>`;
 
   clubOrder.forEach(club => {
-    const group = all.filter(p=>p.club===club).sort((a,b)=>(b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)));
+    const group = all.filter(p=>p.club===club).sort((a,b)=>{
+      if (a.rare !== b.rare) return a.rare ? 1 : -1; // 정기 먼저
+      const ae = (EVER_DB[a.full&&a.full.slice(1)]||a).ever;
+      const be = (EVER_DB[b.full&&b.full.slice(1)]||b).ever;
+      return be - ae;
+    });
     if (!group.length) return;
 
     const clubLabel = club || '미분류';
@@ -2779,7 +2840,7 @@ function setScoreHistory(hist) {
 }
 
 // 초기 이력 로드 (처음 한 번만)
-const HISTORY_VERSION = '20260607m'; // 데이터 버전 — 변경 시 강제 덮어쓰기
+const HISTORY_VERSION = '20260607u'; // 데이터 버전 — 변경 시 강제 덮어쓰기
 
 function initHistoryIfEmpty() {
   // INIT_HISTORY를 직접 메모리에 로드 (딥카피 최소화로 속도 개선)
