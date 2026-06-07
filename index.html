@@ -1601,7 +1601,7 @@ function renderRanking(players, gameRanks, roleMap, feeEach, feeCumul, feePerGam
         : `<td style="text-align:center;color:var(--muted);">${(feeEach[p.id][g]||0).toLocaleString()}원</td>`;
       html += `<tr class="${isW?'r1':isL?'loser':'rother'}">
         <td><span class="rbadge">${i+1}</span></td>
-        <td><strong style="font-size:18px;">${p.fullName}${isL && p.fullName === '김애란' ? ' 🍀 <span style="font-size:11px;color:var(--green);font-weight:400;">굿럭</span>' : ''}</strong></td>
+        <td><strong style="font-size:18px;">${isW ? '👑 ' : ''}${p.fullName}${isL && p.fullName === '김애란' ? ' 🍀 <span style="font-size:11px;color:var(--green);font-weight:400;">굿럭</span>' : ''}</strong></td>
         <td style="color:var(--green);font-weight:700;font-size:16px;">${p.ever}</td>
         <td style="font-weight:700;font-size:18px;">${p.vals[g].raw??'—'}</td>
         <td><span class="${dcls}">${d!==null?(d>0?'+':'')+d:'—'}</span></td>
@@ -2760,7 +2760,7 @@ function setScoreHistory(hist) {
 }
 
 // 초기 이력 로드 (처음 한 번만)
-const HISTORY_VERSION = '20260606o'; // 데이터 버전 — 변경 시 강제 덮어쓰기
+const HISTORY_VERSION = '20260606p'; // 데이터 버전 — 변경 시 강제 덮어쓰기
 
 function initHistoryIfEmpty() {
   // INIT_HISTORY를 직접 메모리에 로드 (딥카피 최소화로 속도 개선)
