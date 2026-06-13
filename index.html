@@ -197,7 +197,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v4.8</span></h1>
+    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v4.9</span></h1>
     <div class="sub">한울타리 천하제일볼링대회 · 에버 기준 순위</div>
   </div>
 </header>
@@ -566,7 +566,12 @@ function autoRestore() {
     if (!data || !data.S) return false;
     const ds = data.S;
     S.name       = ds.name    || '한울타리 천하제일볼링대회';
-    S.date       = ds.date    || '';
+    // 날짜는 항상 오늘 날짜로
+    const _rt = new Date();
+    const _ryy = String(_rt.getFullYear()).slice(2);
+    const _rmm = String(_rt.getMonth()+1).padStart(2,'0');
+    const _rdd = String(_rt.getDate()).padStart(2,'0');
+    S.date = `${_ryy}.${_rmm}.${_rdd}`;
     S.games      = ds.games   || 5;
     S.winners    = ds.winners || 3;
     S.losers     = ds.losers  || 3;
@@ -673,7 +678,11 @@ function resetTournament() {
   mConfirm('대회 정보·점수·설정을 모두 초기화할까요?\n(참가자에버표는 유지됩니다)', () => {
     // 기본설정 초기화
     S.name   = '한울타리 천하제일볼링대회';
-    S.date   = '';
+    const _td = new Date();
+    const _tyy = String(_td.getFullYear()).slice(2);
+    const _tmm = String(_td.getMonth()+1).padStart(2,'0');
+    const _tdd = String(_td.getDate()).padStart(2,'0');
+    S.date   = `${_tyy}.${_tmm}.${_tdd}`;
     S.games  = 5;
     S.winners = 3;
     S.losers  = 3;
@@ -687,7 +696,7 @@ function resetTournament() {
     S.mealBet = {win:[],lose:[],out:[],gogi:null,gogiTeam:null,scores:{},games:1,mode:'normal'};
     // UI 입력칸 초기화
     document.getElementById('t-name').value    = S.name;
-    document.getElementById('t-date').value    = '';
+    document.getElementById('t-date').value    = S.date;
     document.getElementById('t-games').value   = 5;
     document.getElementById('t-winners').value = 3;
     document.getElementById('t-fee').value     = 3000;
@@ -2091,11 +2100,20 @@ function renderEvChart() {
   const allDB = Object.entries(EVER_DB).map(([k,v])=>({firstName:k,...v}));
   const extra = getEvChartExtra();
 
+  // 전체 날짜 중 마지막 날짜 찾기
+  const allDatesForRare = Object.values(hist).flatMap(dm => Object.keys(dm)).filter((v,i,a)=>a.indexOf(v)===i).sort();
+  const lastDateForRare = allDatesForRare[allDatesForRare.length - 1];
+
   const activeSet = new Set();
   allDB.forEach(p => {
-    if (p.rare) return;
-    // hist는 이미 INIT_HISTORY + localStorage 병합된 상태
     const dm = hist[p.fullName] || INIT_HISTORY[p.fullName] || {};
+    if (p.rare) {
+      // 비정기: 마지막 날짜에 점수 있으면 포함
+      if (lastDateForRare && dm[lastDateForRare] && (dm[lastDateForRare]||[]).some(s=>s!==null&&s>0)) {
+        activeSet.add(p.fullName);
+      }
+      return;
+    }
     const hasRecent = Object.keys(dm).some(d => (dm[d]||[]).some(s=>s!==null&&s!==0));
     if (hasRecent) activeSet.add(p.fullName);
   });
@@ -2104,8 +2122,21 @@ function renderEvChart() {
     .filter(p => !activeSet.has(p.fullName))
     .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)); });
 
+  // 마지막 날짜 찾기 (비정기 참가자 자동 포함용)
+  const allDatesAll = Object.values(hist).flatMap(dm => Object.keys(dm)).filter((v,i,a)=>a.indexOf(v)===i).sort();
+  const lastDate = allDatesAll[allDatesAll.length - 1];
+
+  // 비정기 참가자 중 마지막 날짜에 점수 있는 사람 자동 포함
+  const rareActiveSet = new Set();
+  allDB.filter(p => p.rare).forEach(p => {
+    const dm = hist[p.fullName] || {};
+    if (lastDate && dm[lastDate] && (dm[lastDate]||[]).some(s=>s!==null&&s>0)) {
+      rareActiveSet.add(p.fullName);
+    }
+  });
+
   const allPlayers = allDB
-    .filter(p => activeSet.has(p.fullName) || extra.has(p.fullName))
+    .filter(p => activeSet.has(p.fullName) || extra.has(p.fullName) || rareActiveSet.has(p.fullName))
     .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)); });
 
   window._evChartPlayers = allPlayers; // 이미지 저장용
@@ -2856,7 +2887,7 @@ function setScoreHistory(hist) {
 }
 
 // 초기 이력 로드 (처음 한 번만)
-const HISTORY_VERSION = '20260613b'; // 데이터 버전 — 변경 시 강제 덮어쓰기
+const HISTORY_VERSION = '20260613f'; // 데이터 버전 — 변경 시 강제 덮어쓰기
 
 function initHistoryIfEmpty() {
   // INIT_HISTORY를 직접 메모리에 로드 (딥카피 최소화로 속도 개선)
