@@ -197,7 +197,7 @@
 <header>
   <div style="font-size:34px;filter:drop-shadow(0 0 8px rgba(232,201,74,.5))">🎳</div>
   <div>
-    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v4.5</span></h1>
+    <h1>BOWLING RANK <span style="font-size:16px;font-weight:600;color:var(--muted);vertical-align:middle;">v4.7</span></h1>
     <div class="sub">한울타리 천하제일볼링대회 · 에버 기준 순위</div>
   </div>
 </header>
@@ -1848,11 +1848,18 @@ function ecSaveEver(inp, firstName) {
   const v = +inp.value;
   if (!v || v < 50 || v > 300) { renderEvChart(); return; }
   if (!EVER_DB[firstName]) { renderEvChart(); return; }
-  EVER_DB[firstName].ever = v;
-  EVER_DB[firstName].everRaw = v;
-  EVER_DB[firstName].fixedEver = v;
-  S.players.forEach(p => { if (p.name === firstName) p.ever = v; });
-  renderEvChart();
+  const oldEver = EVER_DB[firstName].ever;
+  const fullName = EVER_DB[firstName].fullName;
+  if (v === oldEver) { renderEvChart(); return; }
+  mConfirm(`${fullName} 에버 수정\n\n${oldEver} → ${v}\n\n확인하시겠습니까?`, () => {
+    EVER_DB[firstName].ever = v;
+    EVER_DB[firstName].everRaw = v;
+    EVER_DB[firstName].fixedEver = v;
+    S.players.forEach(p => { if (p.name === firstName) p.ever = v; });
+    renderEvChart();
+    refreshEverFromHistory();
+    renderEverTable();
+  }, () => { renderEvChart(); });
 }
 
 
@@ -2646,9 +2653,9 @@ function renderEverTable() {
   clubOrder.forEach(club => {
     const group = all.filter(p=>p.club===club).sort((a,b)=>{
       if (a.rare !== b.rare) return a.rare ? 1 : -1; // 정기 먼저
-      const ae = (EVER_DB[a.full&&a.full.slice(1)]||a).ever;
-      const be = (EVER_DB[b.full&&b.full.slice(1)]||b).ever;
-      return be - ae;
+      const aDB = EVER_DB[a.full&&a.full.slice(1)] || a;
+      const bDB = EVER_DB[b.full&&b.full.slice(1)] || b;
+      return (bDB.ever - aDB.ever) || ((bDB.everRaw||bDB.ever) - (aDB.everRaw||aDB.ever));
     });
     if (!group.length) return;
 
@@ -2741,12 +2748,16 @@ function onEverKey(e, firstName) {
 
 function commitEverEdit(firstName, val) {
   if (!EVER_DB[firstName]) return;
-  EVER_DB[firstName].ever     = val;
-  EVER_DB[firstName].everRaw  = val;
-  EVER_DB[firstName].fixedEver = val;  // 이력 재계산 시에도 고정
-  S.players.forEach(p=>{ if(p.name===firstName) p.ever=val; });
-  renderEverTable();
-  if (document.getElementById('page-scores').classList.contains('active')) renderGameTable(S.activeGame);
+  const oldVal = EVER_DB[firstName].ever;
+  const fullName = EVER_DB[firstName].fullName;
+  if (val === oldVal) { renderEverTable(); return; }
+  mConfirm(`${fullName} 에버 수정\n\n${oldVal} → ${val}\n\n확인하시겠습니까?`, () => {
+    // 참가자에버표에만 반영 (fixedEver 설정 안 함 → 에버계산표 이력 계산 유지)
+    EVER_DB[firstName].ever = val;
+    S.players.forEach(p=>{ if(p.name===firstName) p.ever=val; });
+    renderEverTable();
+    if (document.getElementById('page-scores').classList.contains('active')) renderGameTable(S.activeGame);
+  }, () => { renderEverTable(); });
 }
 
 // everBlur 제거 — 버튼 방식으로 대체
@@ -2840,7 +2851,7 @@ function setScoreHistory(hist) {
 }
 
 // 초기 이력 로드 (처음 한 번만)
-const HISTORY_VERSION = '20260607x'; // 데이터 버전 — 변경 시 강제 덮어쓰기
+const HISTORY_VERSION = '20260608d'; // 데이터 버전 — 변경 시 강제 덮어쓰기
 
 function initHistoryIfEmpty() {
   // INIT_HISTORY를 직접 메모리에 로드 (딥카피 최소화로 속도 개선)
@@ -2857,7 +2868,7 @@ function initHistoryIfEmpty() {
       for (const name in base) {
         merged[name] = Object.assign({}, base[name]);
       }
-      // 사용자 추가분 병합 (localStorage가 INIT_HISTORY보다 우선)
+      // 사용자 추가분 병합 (localStorage 우선 — 점수 수정/신규 대회 모두 반영)
       for (const name in stored) {
         if (!merged[name]) merged[name] = {};
         for (const date in stored[name]) {
