@@ -2636,30 +2636,49 @@ function applyEvChartSelection() {
   });
   setEvChartSelected(sel);
 
-  // 참가자 탭에 자동 불러오기 (선택된 사람만, 기존 참가자 초기화 후)
-  mConfirm(`선택된 ${sel.size}명을 참가자로 불러올까요?\n(기존 참가자 목록이 초기화됩니다)`, () => {
-    S.players = [];
-    S.scores = {};
-    seq = 1;
-    const sorted = EVER_DB_RAW
-      .filter(p=>sel.has(p.full))
-      .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)); });
-    sorted.forEach(p=>{
-      const firstName = p.full.slice(1);
-      const entry = EVER_DB[firstName];
-      if(!entry) return;
-      const player = {id:seq++, name:firstName, fullName:p.full, ever:entry.ever, type:'i', team:null, club:p.club||''};
-      S.players.push(player);
-      S.scores[player.id] = Array(S.games).fill(null);
+  // 게임 진행 중인지 확인 (점수 입력된 게임이 있는지)
+  const hasScores = S.players.length > 0 && Object.values(S.scores).some(sc => sc && sc.some(v => v !== null && v !== undefined));
+
+  if (hasScores) {
+    // 게임 진행 중 - 에버만 업데이트, 점수 유지
+    mConfirm(`게임 진행 중입니다.\n점수는 유지하고 에버값만 업데이트할까요?`, () => {
+      S.players.forEach(p => {
+        const entry = EVER_DB[p.name];
+        if (entry) p.ever = entry.ever;
+      });
+      renderPlayerList();
+      renderCfgBar();
+      renderEverTable();
+      if (document.getElementById('page-scores').classList.contains('active')) renderGameTable(S.activeGame);
+      autoSave();
+      mAlert(`✅ 에버 업데이트 완료!`);
     });
-    renderPlayerList();
-    renderCfgBar();
-    renderEverTable();
-    autoSave();
-    mAlert(`✅ ${S.players.length}명 참가자 불러오기 완료!`, () => {
-      showTab('scores');
+  } else {
+    // 게임 미진행 - 기존처럼 전체 초기화
+    mConfirm(`선택된 ${sel.size}명을 참가자로 불러올까요?\n(기존 참가자 목록이 초기화됩니다)`, () => {
+      S.players = [];
+      S.scores = {};
+      seq = 1;
+      const sorted = EVER_DB_RAW
+        .filter(p=>sel.has(p.full))
+        .sort((a,b)=>{ if(a.club!==b.club) return a.club==='한울타리'?-1:1; return (b.ever-a.ever)||((b.everRaw||b.ever)-(a.everRaw||a.ever)); });
+      sorted.forEach(p=>{
+        const firstName = p.full.slice(1);
+        const entry = EVER_DB[firstName];
+        if(!entry) return;
+        const player = {id:seq++, name:firstName, fullName:p.full, ever:entry.ever, type:'i', team:null, club:p.club||''};
+        S.players.push(player);
+        S.scores[player.id] = Array(S.games).fill(null);
+      });
+      renderPlayerList();
+      renderCfgBar();
+      renderEverTable();
+      autoSave();
+      mAlert(`✅ ${S.players.length}명 참가자 불러오기 완료!`, () => {
+        showTab('scores');
+      });
     });
-  });
+  }
 }
 
 function selectAllEvchart(val) {
@@ -2916,7 +2935,7 @@ function setScoreHistory(hist) {
 }
 
 // 초기 이력 로드 (처음 한 번만)
-const HISTORY_VERSION = '20260615a'; // 데이터 버전 — 변경 시 강제 덮어쓰기
+const HISTORY_VERSION = '20260615b'; // 데이터 버전 — 변경 시 강제 덮어쓰기
 
 function initHistoryIfEmpty() {
   // INIT_HISTORY를 직접 메모리에 로드 (딥카피 최소화로 속도 개선)
